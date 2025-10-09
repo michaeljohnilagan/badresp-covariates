@@ -81,17 +81,6 @@ dao0 = function(x, size, steepness, prevalence) {
 	return(pmf_mix)
 }
 
-# AO0 hierarchy PMF memoized
-dao0 = function(x, size, steepness, prevalence) {
-	masspoints = unique(x)
-	pmf_tabled_class0 = dcarpbin(masspoints, size=size, shift=steepness)
-	pmf_tabled_class1 = dcarpbin(masspoints, size=size, shift=0)
-	pmf_tabled_mix = prevalence*pmf_tabled_class1+(1-prevalence)*
-	pmf_tabled_class0
-	pmf_untabled_mix = pmf_tabled_mix[match(x, masspoints)]
-	return(pmf_untabled_mix)
-}
-
 # test: dao0 vs dcarpbin
 with(new.env(), {
 	# parameters
