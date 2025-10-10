@@ -33,12 +33,15 @@ rcarpbin = function(n, size, shift) {
 
 # carpal binomial hierarchy PMF
 dcarpbin = function(x, size, shift) {
-	sapply(x, function(xx) {
+	# function for single inputs
+	f = function(x, size, shift) {
 		fun_to_integrate = function(rho) {
-			dbinom(xx, size=size, prob=pnorm(rho))*dnorm(rho, mean=shift)
-		}
+			dbinom(x, size=size, prob=pnorm(rho))*dnorm(rho, mean=shift)
+		}		
 		integrate(fun_to_integrate, lower=-Inf, upper=+Inf)$value
-	})
+	}
+	# apply for multiple inputs
+	return(mapply(f, x=x, size=size, shift=shift))
 }
 
 # test: rcarpbin vs dcarpbin
