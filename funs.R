@@ -44,7 +44,7 @@ dcarpbin = function(x, size, shift) {
 	return(mapply(f, x=x, size=size, shift=shift))
 }
 
-# test: rcarpbin vs dcarpbin
+# test: `rcarpbin` vs `dcarpbin`
 set.seed(521)
 with(new.env(), {
 	# parameters
@@ -84,7 +84,7 @@ dao0 = function(x, size, steepness, prevalence) {
 	return(pmf_mix)
 }
 
-# test: dao0 vs dcarpbin
+# test: `dao0` vs `dcarpbin`
 with(new.env(), {
 	# parameters
 	shift = -1
@@ -97,7 +97,7 @@ with(new.env(), {
 	round(pmf_b-pmf_a, 3)
 })
 
-# test: rao0 vs dao0
+# test: `rao0` vs `dao0`
 set.seed(608)
 with(new.env(), {
 	# parameters
@@ -159,7 +159,7 @@ calc_postr_cnr_ao0 = function(x, size, steepness, prevalence) {
 	return(postr)
 }
 
-# test: calc_postr_cnr_ao0 vs rao0
+# test: `calc_postr_cnr_ao0` vs `rao0`
 set.seed(506)
 with(new.env(), {
 	# parameters
