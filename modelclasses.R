@@ -8,13 +8,14 @@ private=list(
 	table = NULL
 ), public=list(
 	initialize = function(size, shift_limit, num_gridpoints) {
-		# size
-		private$size = size
-		# shifts
+		# assert
 		stopifnot(shift_limit<0) # negative shifts only
+		# set size
+		private$size = size
+		# set shifts
 		private$shifts = seq(from=shift_limit, to=0, 
 		length.out=num_gridpoints)
-		# table
+		# set table
 		private$table = sapply(0:size, function(k) {
 			sapply(private$shifts, function(s) {
 				dcarpbin(k, size=size, shift=s)
@@ -22,8 +23,10 @@ private=list(
 		}) # columns are mass points
 	},
 	par = function() {
-		return(list(size=private$size, shift_limit=private$shifts[1], 
-		num_gridpoints=length(private$shifts)))
+		list_of_params = list(size=private$size, 
+		shift_limit=private$shifts[1], 
+		num_gridpoints=length(private$shifts))
+		return(list_of_params)
 	},
 	dcarpbin = function(shift, success_counts) {
 		# assert
