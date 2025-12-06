@@ -35,10 +35,10 @@ rcarpbin = function(n, size, shift) {
 dcarpbin = function(x, size, shift) {
 	# function for single inputs
 	f = function(x, size, shift) {
-		fun_to_integrate = function(rho) {
-			dbinom(x, size=size, prob=pnorm(rho))*dnorm(rho, mean=shift)
-		}		
-		integrate(fun_to_integrate, lower=-Inf, upper=+Inf)$value
+		fun_to_integrate = function(u) {
+			dbinom(x, size=size, prob=u)*dcarpal(u, shift=shift)
+		} # using dcarpal is better than dnorm
+		integrate(fun_to_integrate, lower=0, upper=1)$value
 	}
 	# apply for multiple inputs
 	return(mapply(f, x=x, size=size, shift=shift))
