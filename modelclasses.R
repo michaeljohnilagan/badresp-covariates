@@ -193,7 +193,7 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AccOptimEfficient$new(table=cbtable, prevalence=prevalence, steepness=steepness)
+	mod = AccOptimInefficient$new(table=cbtable, prevalence=prevalence, steepness=steepness)
 	# calculate probabilities
 	masspoints = 0:size
 	postr_a = calc_postr_cnr_ao0(masspoints, size=size, 
@@ -215,7 +215,7 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AccOptimEfficient$new(table=cbtable, prevalence=prevalence, 
+	mod = AccOptimInefficient$new(table=cbtable, prevalence=prevalence, 
 	steepness=steepness)
 	# calculate probabilities
 	masspoints = 0:size
@@ -243,7 +243,7 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AccOptimEfficient$new(table=cbtable, prevalence=NA, steepness=NA)
+	mod = AccOptimInefficient$new(table=cbtable, prevalence=NA, steepness=NA)
 	print(c(steepness, prevalence))
 	mod$fit(x, init=c(-1, 0.5))
 	unlist(mod$par())
