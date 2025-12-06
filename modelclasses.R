@@ -134,7 +134,7 @@ private=list(
 	},
 	par = function() {
 		list_of_params = list(size=private$size, 
-		steepness=private$steepness, prevalence=private$prevalence))
+		steepness=private$steepness, prevalence=private$prevalence)
 		return(list_of_params)
 	},
 	calc_postr_cnr = function(success_counts) {
@@ -197,9 +197,9 @@ with(new.env(), {
 	# calculate probabilities
 	masspoints = 0:size
 	postr_a = calc_postr_cnr_ao0(masspoints, size=size, 
-	steepness=steepness, prevalence=prevalence)
-	postr_b = mod$calc_postr_cnr(masspoints)
-	# compare efficient vs not
+	steepness=steepness, prevalence=prevalence) # non-R6 implementation
+	postr_b = mod$calc_postr_cnr(masspoints) # R6 implementation
+	# compare non-R6 implementation vs R6
 	plot(postr_a, postr_b); abline(0:1)
 	round(postr_a-postr_b, 3)
 })
