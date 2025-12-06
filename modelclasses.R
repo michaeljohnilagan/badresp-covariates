@@ -115,7 +115,7 @@ Sys.time(); with(new.env(), {
 }); Sys.time()
 
 # model class AO0 inefficient
-AccOptimEfficient = R6::R6Class('AccOptimEfficient', 
+AccOptimInefficient = R6::R6Class('AccOptimInefficient', 
 private=list(
 	size = NULL,
 	steepness = NA,
@@ -123,17 +123,19 @@ private=list(
 	table = NULL
 ), public=list(
 	initialize = function(table=NULL, steepness=NULL, prevalence=NULL) {
-			# use table information
-			stopifnot('CarpBinTable' %in% class(table))
-			private$table = table
-			private$size = private$table$par()$size
-			# if provided, set params
-			private$steepness = steepness
-			private$prevalence = prevalence
+		# assert
+		stopifnot('CarpBinTable' %in% class(table))
+		# use table information
+		private$table = table
+		private$size = private$table$par()$size
+		# if provided, set params
+		private$steepness = steepness
+		private$prevalence = prevalence
 	},
 	par = function() {
-		return(list(size=private$size, steepness=private$steepness, 
-		prevalence=private$prevalence))
+		list_of_params = list(size=private$size, 
+		steepness=private$steepness, prevalence=private$prevalence))
+		return(list_of_params)
 	},
 	calc_postr_cnr = function(success_counts) {
 		# compute likelihood by class, efficient vs not
