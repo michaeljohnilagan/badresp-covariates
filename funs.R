@@ -121,12 +121,28 @@ with(new.env(), {
 	round(pmf_empirical-pmf_theoretical, 3)
 })
 
-# expectation for AO0
-expect_ao0 = function(size, steepness, prevalence) {
-	masspoints = 0:size
-	pmf = dao0(masspoints, size=size, steepness=steepness, prevalence=prevalence)
+# moment for AO0
+moment_ao0 = function(power, size, steepness, prevalence) {
+	masspoints = (0:size)^power
+	pmf = dao0(masspoints, size=size, steepness=steepness, 
+	prevalence=prevalence)
 	expected = sum(masspoints*pmf)
 	return(expected)
+}
+
+# expectation for AO0
+expect_ao0 = function(size, steepness, prevalence) {
+	return(moment_ao0(power=1, size=size, steepness=steepness, 
+	prevalence=prevalence))
+}
+
+# variance for AO0
+var_ao0 = function(size, steepness, prevalence) {
+	second_moment = moment_ao0(power=2, size=size, steepness=steepness, 
+	prevalence=prevalence)
+	first_moment = moment_ao0(power=1, size=size, steepness=steepness, 
+	prevalence=prevalence)
+	return(second_moment-first_moment^2)
 }
 
 # test: expect_ao0 vs rao0
@@ -188,3 +204,4 @@ pval2count = function(pval, size) {
 	success_count = pval*(size+1)-1
 	return(success_count)
 }
+
