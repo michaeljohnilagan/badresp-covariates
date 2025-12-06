@@ -136,9 +136,23 @@ expect_ao0 = function(size, steepness, prevalence) {
 	prevalence=prevalence))
 }
 
+# variance for AO0
+var_ao0 = function(size, steepness, prevalence) {
+	masspoints = 0:size
+	pmf = dao0(masspoints, size=size, steepness=steepness, 
+	prevalence=prevalence)
+	first_moment = sum(masspoints*pmf)
+	squared_deviation = (masspoints-first_moment)^2
+	return(sum(pmf*squared_deviation))
+}
+
 # test: expect_ao0 vs rao0
 set.seed(412)
-with(new.env(), {
+(function(x) {
+	print(mean(x))
+	print(median(x)) 
+	boxplot(x)
+})(replicate(400, {
 	# parameters
 	sampsize = 10e3
 	steepness = -1
@@ -152,9 +166,31 @@ with(new.env(), {
 	prevalence=prevalence)
 	expected_empirical = mean(x)
 	# compare empirical vs theoretical
-	print(round(expected_empirical-expected_theoretical, 3))
-	setNames(c(expected_empirical, expected_theoretical), c('emp', 'theo'))
-})
+	expected_empirical-expected_theoretical
+}))
+
+# test: var_ao0 vs rao0
+set.seed(412)
+(function(x) {
+	print(mean(x))
+	print(median(x)) 
+	boxplot(x)
+})(replicate(400, {
+	# parameters
+	sampsize = 10e3
+	steepness = -2.1
+	size = 20
+	prevalence = 0.6
+	# generate
+	masspoints = 0:size
+	x = rao0(sampsize, size=size, steepness=steepness, prevalence=prevalence)
+	# calculate mean
+	var_theoretical = var_ao0(size=size, steepness=steepness, 
+	prevalence=prevalence)
+	var_empirical = var(x)
+	# compare empirical vs theoretical
+	var_empirical-var_theoretical
+}))
 
 # posterior CNR probability for AO0
 calc_postr_cnr_ao0 = function(x, size, steepness, prevalence) {
