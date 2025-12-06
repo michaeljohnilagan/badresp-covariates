@@ -136,15 +136,6 @@ expect_ao0 = function(size, steepness, prevalence) {
 	prevalence=prevalence))
 }
 
-# variance for AO0
-var_ao0 = function(size, steepness, prevalence) {
-	second_moment = moment_ao0(power=2, size=size, steepness=steepness, 
-	prevalence=prevalence)
-	first_moment = moment_ao0(power=1, size=size, steepness=steepness, 
-	prevalence=prevalence)
-	return(second_moment-first_moment^2)
-}
-
 # test: expect_ao0 vs rao0
 set.seed(412)
 with(new.env(), {
