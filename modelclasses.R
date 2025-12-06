@@ -115,7 +115,7 @@ Sys.time(); with(new.env(), {
 }); Sys.time()
 
 # model class AO0 inefficient
-AccOptimInefficient = R6::R6Class('AccOptimInefficient', 
+AO0Model = R6::R6Class('AO0Model', 
 private=list(
 	size = NULL,
 	steepness = NA,
@@ -160,7 +160,7 @@ private=list(
 		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
 		return(pmf_mix)
 	},
-	fit = function(success_counts, init) {
+	fit_canned = function(success_counts, init) {
 		# define objective
 		objective = function(u) {
 			likelihood = self$dao0(success_counts, steepness=u[1], 
@@ -172,9 +172,13 @@ private=list(
 		if(is.null(init)) {
 			init = c(shift_limit/2, 0.5)
 		}
-		estimate = optim(init, fn=objective, 
-		method='L-BFGS-B', lower=c(shift_limit, 0), upper=c(0, 1))$par
-		#estimate = optim(init, fn=objective)$par
+		if(TRUE) {
+			estimate = optim(init, fn=objective)$par # using nelder-mead
+		} else {
+			estimate = optim(init, fn=objective, 
+			method='L-BFGS-B', lower=c(shift_limit, 0), 
+			upper=c(0, 1))$par # using L-BFGS-B
+		}
 		# assign result to object
 		private$steepness = estimate[1]
 		private$prevalence = estimate[2]
@@ -193,7 +197,7 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AccOptimInefficient$new(table=cbtable, prevalence=prevalence, steepness=steepness)
+	mod = AO0Model$new(table=cbtable, prevalence=prevalence, steepness=steepness)
 	# calculate probabilities
 	masspoints = 0:size
 	postr_a = calc_postr_cnr_ao0(masspoints, size=size, 
@@ -215,7 +219,7 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AccOptimInefficient$new(table=cbtable, prevalence=prevalence, 
+	mod = AO0Model$new(table=cbtable, prevalence=prevalence, 
 	steepness=steepness)
 	# calculate probabilities
 	masspoints = 0:size
@@ -244,8 +248,8 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AccOptimInefficient$new(table=cbtable, prevalence=NA, steepness=NA)
+	mod = AO0Model$new(table=cbtable, prevalence=NA, steepness=NA)
 	print(c(steepness, prevalence))
-	mod$fit(x, init=c(-1, 0.5))
+	mod$fit_canned(x, init=c(-1, 0.5))
 	unlist(mod$par())
 })
