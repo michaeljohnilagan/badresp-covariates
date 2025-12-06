@@ -220,9 +220,10 @@ with(new.env(), {
 	# calculate probabilities
 	masspoints = 0:size
 	pmf_a = dao0(masspoints, size=size, steepness=steepness, 
-	prevalence=prevalence)
-	pmf_b = mod$dao0(masspoints, steepness=steepness, prevalence=prevalence)
-	# compare efficient vs not
+	prevalence=prevalence) # non-R6 implementation
+	pmf_b = mod$dao0(masspoints, steepness=steepness, 
+	prevalence=prevalence) # R6 implementation
+	# compare non-R6 implementation vs R6
 	plot(pmf_a, pmf_b); abline(0:1)
 	round(pmf_a-pmf_b, 3)
 })
