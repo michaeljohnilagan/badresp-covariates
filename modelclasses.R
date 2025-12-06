@@ -28,7 +28,7 @@ private=list(
 		num_gridpoints=length(private$shifts))
 		return(list_of_params)
 	},
-	dcarpbin = function(shift, success_counts) {
+	dcarpbin_sameshift = function(shift, success_counts) {
 		# assert
 		stopifnot(shift<=0)
 		stopifnot(length(shift)==1)
@@ -38,6 +38,24 @@ private=list(
 		masspoints = 0:private$size
 		lookedup = pmf[match(success_counts, masspoints)]
 		return(lookedup)
+	},
+	dcarpbin = function(shifts, success_counts) {
+		if(length(shifts)==1) {
+			# case: only one shift value
+			lookedup = self$dcarpbin_sameshift(shift=shifts, 
+			success_counts=success_counts)
+		} else {
+			# case: multiple shift values
+			framed = data.frame(shifts=shifts, 
+			success_counts=success_counts)
+			lookedup = sapply(1:nrow(framed), function(i) {
+				shift = framed[['shifts']][i]
+				success_count = framed[['success_counts']][i]
+				self$dcarpbin_sameshift(shift=shift, 
+				success_counts=success_count)
+			})
+		}
+		return(lookedup)
 	}
 ))
 
@@ -46,7 +64,7 @@ with(new.env(), {
 	# params
 	size = 15
 	shift_limit = -5
-	num_gridpoints = 10
+	num_gridpoints = 30
 	# implied params
 	masspoints = 0:size
 	shifts = seq(from=shift_limit, to=0, length.out=num_gridpoints)
@@ -65,7 +83,7 @@ with(new.env(), {
 	round(pmf_efficient-pmf_baseline, 4)
 })
 
-# big test on interpolator
+# big test on shifts not in table
 Sys.time(); with(new.env(), {
 	# params
 	size = 200
