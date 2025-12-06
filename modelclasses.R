@@ -150,7 +150,8 @@ private=list(
 		postr = postr_numerator/postr_denominator
 		return(postr)
 	},
-	dao0 = function(success_counts, steepness, prevalence) {
+	dao0 = function(success_counts, steepness=private$steepness, 
+	prevalence=private$prevalence) {
 		# compute PMF by class
 		dcarpbin_efficient = private$table$dcarpbin
 		pmf_class0 = dcarpbin_efficient(shift=steepness, 
