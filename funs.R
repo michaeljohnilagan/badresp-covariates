@@ -36,9 +36,10 @@ dcarpbin = function(x, size, shift) {
 	# function for single inputs
 	f = function(x, size, shift) {
 		fun_to_integrate = function(u) {
-			dbinom(x, size=size, prob=u)*dcarpal(u, shift=shift)
+			#dbinom(x, size=size, prob=u)*dcarpal(u, shift=shift)
+			dbinom(x, size=size, prob=pnorm(u))*dnorm(u, mean=shift)
 		} # using dcarpal is better than dnorm
-		integrate(fun_to_integrate, lower=0, upper=1)$value
+		integrate(fun_to_integrate, lower=-Inf, upper=+Inf)$value
 	}
 	# apply for multiple inputs
 	return(mapply(f, x=x, size=size, shift=shift))
@@ -232,3 +233,67 @@ pval2count = function(pval, size) {
 	return(success_count)
 }
 
+# fit method of moments
+fit_methmom = function(success_count, size, steepness_lim=-10, grid_size=50) {
+	# get empirical moments from data
+	emp_mean = mean(success_count)
+	emp_var = var(success_count)
+	# get class 1 (flat) moments
+	flat_mean = size/2
+	flat_var = sum((0:size)^2)/(size+1)-flat_mean^2
+	# get steepest class 0 mean
+	lowest_mean = expect_ao0(size=size, steepness=steepness_lim, 
+	prevalence=0)
+	# emergency exit for extreme empirical mean
+	if(emp_mean>flat_mean) {
+		fitted_params = list(prevalence=1, steepness=0)
+		return(fitted_params)
+	} # too high
+	if(emp_mean<lowest_mean) {
+		fitted_params = list(prevalence=0, steepness=steepness_lim)
+		return(fitted_params)
+	} # too low
+	# set range for steepness
+	steepness_left = steepness_lim
+	steepness_right = optimize(f=function(s) {
+		implied_mean = expect_ao0(size=size, steepness=s, prevalence=0)
+		(implied_mean-emp_mean)^2
+	}, lower=steepness_lim, upper=0)$minimum
+	# helper functions for fitting
+	match_prevalence = function(steepness) {
+		matched_class0_mean = expect_ao0(size=size, 
+		steepness=steepness, prevalence=0)
+		matched_prevalence = (emp_mean-matched_class0_mean)/
+		(flat_mean-matched_class0_mean)
+		matched_prevalence
+	}
+	lossfun = function(steepness) {
+		matched_prevalence = match_prevalence(steepness)
+		implied_mixture_var = var_ao0(size=size, steepness=steepness, 
+		prevalence=matched_prevalence)
+		abs(emp_var-implied_mixture_var)
+	}
+	# optimization
+	fitted_steepness = optimize(f=lossfun, lower=steepness_left, 
+	upper=steepness_right)$minimum
+	fitted_prevalence = match_prevalence(fitted_steepness)
+	# result
+	fitted_params = list(prevalence=fitted_prevalence, 
+	steepness=fitted_steepness)
+	return(fitted_params)
+}
+
+# test: fitting
+set.seed(516)
+with(new.env(), {
+	# parameters
+	sampsize = 2e3
+	size = 200
+	steepness = -1.21
+	prevalence = 0.4
+	# generate
+	masspoints = 0:size
+	x = rao0(sampsize, size=size, steepness=steepness, prevalence=prevalence)
+	# fitting
+	fit_methmom(success_count=x, size=size)
+})
