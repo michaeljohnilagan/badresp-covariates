@@ -38,7 +38,7 @@ dcarpbin = function(x, size, shift) {
 		fun_to_integrate = function(u) {
 			#dbinom(x, size=size, prob=u)*dcarpal(u, shift=shift)
 			dbinom(x, size=size, prob=pnorm(u))*dnorm(u, mean=shift)
-		} # using dcarpal is better than dnorm
+		}
 		integrate(fun_to_integrate, lower=-Inf, upper=+Inf)$value
 	}
 	# apply for multiple inputs
@@ -266,13 +266,13 @@ fit_methmom = function(success_count, size, steepness_lim=-10, grid_size=50) {
 		matched_prevalence = (emp_mean-matched_class0_mean)/
 		(flat_mean-matched_class0_mean)
 		matched_prevalence
-	}
+	} # for given steepness, find prevalence to match mean
 	lossfun = function(steepness) {
 		matched_prevalence = match_prevalence(steepness)
 		implied_mixture_var = var_ao0(size=size, steepness=steepness, 
 		prevalence=matched_prevalence)
 		abs(emp_var-implied_mixture_var)
-	}
+	} # for given steepness, find discrepancy in variance
 	# optimization
 	fitted_steepness = optimize(f=lossfun, lower=steepness_left, 
 	upper=steepness_right)$minimum
@@ -293,7 +293,9 @@ with(new.env(), {
 	prevalence = 0.4
 	# generate
 	masspoints = 0:size
-	x = rao0(sampsize, size=size, steepness=steepness, prevalence=prevalence)
+	x = rao0(sampsize, size=size, steepness=steepness, 
+	prevalence=prevalence)
 	# fitting
 	fit_methmom(success_count=x, size=size)
 })
+
