@@ -114,7 +114,7 @@ Sys.time(); with(new.env(), {
 	round(quantile(abs(tab_diff)), 3)
 }); Sys.time()
 
-# model class AO0 inefficient
+# model class AO0
 AO0Model = R6::R6Class('AO0Model', 
 private=list(
 	size = NULL,
@@ -137,6 +137,17 @@ private=list(
 		steepness=private$steepness, prevalence=private$prevalence)
 		return(list_of_params)
 	},
+	dao0 = function(success_counts, steepness=private$steepness, 
+	prevalence=private$prevalence) {
+		# compute PMF by class
+		dcarpbin_efficient = private$table$dcarpbin
+		pmf_class0 = dcarpbin_efficient(shift=steepness, 
+		success_counts=success_counts)
+		pmf_class1 = dcarpbin_efficient(shift=0, success_counts=success_counts)
+		# mix the two classes
+		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
+		return(pmf_mix)
+	},
 	calc_postr_cnr = function(success_counts) {
 		# compute likelihood by class, efficient vs not
 		dcarpbin_efficient = private$table$dcarpbin
@@ -149,17 +160,6 @@ private=list(
 		postr_denominator = postr_numerator+(1-private$prevalence)*likelihood_class0
 		postr = postr_numerator/postr_denominator
 		return(postr)
-	},
-	dao0 = function(success_counts, steepness=private$steepness, 
-	prevalence=private$prevalence) {
-		# compute PMF by class
-		dcarpbin_efficient = private$table$dcarpbin
-		pmf_class0 = dcarpbin_efficient(shift=steepness, 
-		success_counts=success_counts)
-		pmf_class1 = dcarpbin_efficient(shift=0, success_counts=success_counts)
-		# mix the two classes
-		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
-		return(pmf_mix)
 	},
 	fit_canned = function(success_counts, init) {
 		# define objective

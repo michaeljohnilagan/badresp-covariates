@@ -234,7 +234,7 @@ pval2count = function(pval, size) {
 }
 
 # fit method of moments
-fit_methmom = function(success_count, size, steepness_lim=-10, grid_size=50) {
+fit_methmom = function(success_count, size, steepness_lim) {
 	# get empirical moments from data
 	emp_mean = mean(success_count)
 	emp_var = var(success_count)
@@ -296,6 +296,6 @@ with(new.env(), {
 	x = rao0(sampsize, size=size, steepness=steepness, 
 	prevalence=prevalence)
 	# fitting
-	fit_methmom(success_count=x, size=size)
+	fit_methmom(success_count=x, size=size, steepness_lim=-10)
 })
 
