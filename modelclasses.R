@@ -78,6 +78,21 @@ private=list(
 		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
 		return(pmf_mix)
 	}
+	lookup_m = function(shift) {
+		# find mean for given shift
+		approx(x=private$table_mv[['shift']], 
+		y=private$table_mv[['mean']], xout=shift)
+	}
+	reverse_lookup_m = function(mean) {
+		# find shift for given mean
+		approx(x=private$table_mv[['mean']], 
+		y=private$table_mv[['shift']], xout=mean)
+	}
+	lookup_v = function(shift) {
+		# find variance for given shift
+		approx(x=private$table_mv[['shift']], 
+		y=private$table_mv[['variance']], xout=shift)
+	}
 ))
 
 # small test on CarpBinTable
