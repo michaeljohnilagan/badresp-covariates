@@ -56,6 +56,15 @@ private=list(
 			})
 		}
 		return(lookedup)
+	},
+	dao0 = function(prevalences, shifts, success_counts) {
+		# compute PMF by class
+		pmf_class0 = self$dcarpbin(shifts=shifts, 
+		success_counts=success_counts)
+		pmf_class1 = self$dcarpbin(shifts=0, success_counts=success_counts)
+		# mix the two classes
+		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
+		return(pmf_mix)
 	}
 ))
 
@@ -136,17 +145,6 @@ private=list(
 		list_of_params = list(size=private$size, 
 		steepness=private$steepness, prevalence=private$prevalence)
 		return(list_of_params)
-	},
-	dao0 = function(success_counts, steepness=private$steepness, 
-	prevalence=private$prevalence) {
-		# compute PMF by class
-		dcarpbin_efficient = private$table$dcarpbin
-		pmf_class0 = dcarpbin_efficient(shift=steepness, 
-		success_counts=success_counts)
-		pmf_class1 = dcarpbin_efficient(shift=0, success_counts=success_counts)
-		# mix the two classes
-		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
-		return(pmf_mix)
 	},
 	calc_postr_cnr = function(success_counts) {
 		# compute likelihood by class, efficient vs not
