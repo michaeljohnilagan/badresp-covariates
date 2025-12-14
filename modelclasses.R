@@ -5,7 +5,8 @@ CarpBinTable = R6::R6Class('CarpBinTable',
 private=list(
 	size = NULL,
 	shifts = NULL,
-	table = NULL
+	table_pmf = NULL,
+	table_mv = NULL
 ), public=list(
 	initialize = function(size, shift_limit, num_gridpoints) {
 		# assert
@@ -15,12 +16,22 @@ private=list(
 		# set shifts
 		private$shifts = seq(from=shift_limit, to=0, 
 		length.out=num_gridpoints)
-		# set table
-		private$table = sapply(0:size, function(k) {
+		# set PMF table
+		private$table_pmf = sapply(0:size, function(k) {
 			sapply(private$shifts, function(s) {
 				dcarpbin(k, size=size, shift=s)
 			}) # rows are shifts
 		}) # columns are mass points
+		# set mean variance table
+		mass_points = 0:size
+		private$table_mv = data.frame(shift=private$shifts)
+		private$table_mv[['mean']] = private$table_pmf%*%mass_points
+		private$table_mv[['variance']] = sapply(
+		1:nrow(private$table_mv), function(i) {
+			mass_points_sqdev = (mass_points-
+			private$table_mv[['mean']])^2
+			sum(private$table_pmf[i, ]*mass_points_sqdev)
+		})
 	},
 	par = function() {
 		list_of_params = list(size=private$size, 
@@ -61,7 +72,8 @@ private=list(
 		# compute PMF by class
 		pmf_class0 = self$dcarpbin(shifts=shifts, 
 		success_counts=success_counts)
-		pmf_class1 = self$dcarpbin(shifts=0, success_counts=success_counts)
+		pmf_class1 = self$dcarpbin(shifts=0, 
+		success_counts=success_counts)
 		# mix the two classes
 		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
 		return(pmf_mix)
