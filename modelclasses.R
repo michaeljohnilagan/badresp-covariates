@@ -48,7 +48,7 @@ private=list(
 		stopifnot(length(shift)==1)
 		# look up
 		shift_idx = min(which(shift<=private$shifts))
-		pmf = private$table[shift_idx, ]
+		pmf = private$table_pmf[shift_idx, ]
 		masspoints = 0:private$size
 		lookedup = pmf[match(success_counts, masspoints)]
 		return(lookedup)
@@ -217,11 +217,11 @@ private=list(
 	tables = NULL
 ), public=list(
 	# initialize object
-	initialize = function(table) {
+	initialize = function(tables) {
 		# assert
-		stopifnot('CarpBinTable' %in% class(table))
+		stopifnot('CarpBinTable' %in% class(tables))
 		# use table information
-		private$table = table
+		private$tables = tables
 		private$size = private$tables$par()$size
 	},
 	# get params
@@ -271,13 +271,13 @@ private=list(
 	likelihood = function(success_counts=private$success_counts, 
 	steepness=private$steepness, prevalence=private$prevalence) {
 		return(dao0(success_counts, steepness, prevalence))
-	}
+	},
 	# compute posterior probability of CNR
 	calc_postr_cnr = function(success_counts=private$success_counts, 
 	steepness=private$steepness, prevalence=private$prevalence) {
 		# compute likelihood by class
 		dcarpbin = private$tables$dcarpbin
-		likelihood_class0 = dcarpbin(shifts=private$steepness, 
+		likelihood_class0 = dcarpbin(shifts=steepness, 
 		success_counts=success_counts)
 		likelihood_class1 = dcarpbin(shifts=0, 
 		success_counts=success_counts)
@@ -325,15 +325,15 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AO0Model$new(table=cbtable, prevalence=prevalence, steepness=steepness)
+	mod = AO0Model$new(table=cbtable)
 	# calculate probabilities
 	masspoints = 0:size
-	postr_a = calc_postr_cnr_ao0(masspoints, size=size, 
-	steepness=steepness, prevalence=prevalence) # non-R6 implementation
-	postr_b = mod$calc_postr_cnr(masspoints) # R6 implementation
-	# compare non-R6 implementation vs R6
-	plot(postr_a, postr_b); abline(0:1)
-	round(postr_a-postr_b, 3)
+	baseline = calc_postr_cnr_ao0(masspoints, size=size, 
+	steepness=steepness, prevalence=prevalence)
+	efficient = mod$calc_postr_cnr(success_counts=masspoints, 
+	steepness=steepness, prevalence=prevalence)
+	plot(baseline, efficient); abline(0:1)
+	quantile(round(baseline-efficient, 3))
 })
 
 # test: AO0 PMF calculation
@@ -347,17 +347,16 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AO0Model$new(table=cbtable, prevalence=prevalence, 
-	steepness=steepness)
+	mod = AO0Model$new(tables=cbtable)
 	# calculate probabilities
 	masspoints = 0:size
-	pmf_a = dao0(masspoints, size=size, steepness=steepness, 
+	baseline = dao0(masspoints, size=size, steepness=steepness, 
 	prevalence=prevalence) # non-R6 implementation
-	pmf_b = mod$dao0(masspoints, steepness=steepness, 
+	efficient = mod$dao0(masspoints, steepness=steepness, 
 	prevalence=prevalence) # R6 implementation
 	# compare non-R6 implementation vs R6
-	plot(pmf_a, pmf_b); abline(0:1)
-	round(pmf_a-pmf_b, 3)
+	plot(efficient, baseline); abline(0:1)
+	quantile(round(baseline-efficient, 3))
 })
 
 # test: fitting
