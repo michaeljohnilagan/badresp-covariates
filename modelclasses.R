@@ -256,27 +256,29 @@ private=list(
 		return(invisible(NULL))
 	},
 	# compute PMF
-	dao0 = function(prevalences, shifts, success_counts) {
+	dao0 = function(success_counts, steepness, prevalence) {
 		# compute PMF by class
-		pmf_class0 = self$tables$dcarpbin(shifts=shifts, 
+		dcarpbin = private$tables$dcarpbin
+		pmf_class0 = dcarpbin(shifts=steepness, 
 		success_counts=success_counts)
-		pmf_class1 = self$tables$dcarpbin(shifts=0, 
+		pmf_class1 = dcarpbin(shifts=0, 
 		success_counts=success_counts)
 		# mix the two classes
-		pmf_mix = prevalences*pmf_class1+(1-prevalences)*pmf_class0
+		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
 		return(pmf_mix)
 	},
 	# compute posterior probability of CNR
-	calc_postr_cnr = function(success_counts) {
-		# compute likelihood by class, efficient vs not
-		dcarpbin_efficient = private$table$dcarpbin
-		likelihood_class0 = dcarpbin_efficient(shift=private$steepness, 
+	calc_postr_cnr = function(success_counts=private$success_counts, 
+	steepness=private$steepness, prevalence=private$prevalence) {
+		# compute likelihood by class
+		dcarpbin = private$tables$dcarpbin
+		likelihood_class0 = dcarpbin(shifts=private$steepness, 
 		success_counts=success_counts)
-		likelihood_class1 = dcarpbin_efficient(shift=0, 
+		likelihood_class1 = dcarpbin(shifts=0, 
 		success_counts=success_counts)
 		# numerator and denominator of posterior
-		postr_numerator = private$prevalence*likelihood_class1
-		postr_denominator = postr_numerator+(1-private$prevalence)*likelihood_class0
+		postr_numerator = prevalence*likelihood_class1
+		postr_denominator = postr_numerator+(1-prevalence)*likelihood_class0
 		postr = postr_numerator/postr_denominator
 		return(postr)
 	},
