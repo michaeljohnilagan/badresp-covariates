@@ -17,20 +17,20 @@ private=list(
 		private$shifts = seq(from=shift_limit, to=0, 
 		length.out=num_gridpoints)
 		# set PMF table
-		private$table_pmf = sapply(0:size, function(k) {
+		masspoints = 0:size
+		private$table_pmf = sapply(masspoints, function(k) {
 			sapply(private$shifts, function(s) {
 				dcarpbin(k, size=size, shift=s)
 			}) # rows are shifts
 		}) # columns are mass points
 		# set mean variance table
-		mass_points = 0:size
 		private$table_mv = data.frame(shift=private$shifts)
-		private$table_mv[['mean']] = private$table_pmf%*%mass_points
+		private$table_mv[['mean']] = private$table_pmf%*%masspoints
 		private$table_mv[['variance']] = sapply(
 		1:nrow(private$table_mv), function(i) {
-			mass_points_sqdev = (mass_points-
-			private$table_mv[['mean']])^2
-			sum(private$table_pmf[i, ]*mass_points_sqdev)
+			masspoints_sqdev = (masspoints-
+			private$table_mv[['mean']][i])^2
+			sum(private$table_pmf[i, ]*masspoints_sqdev)
 		})
 	},
 	par = function() {
@@ -77,21 +77,21 @@ private=list(
 		# mix the two classes
 		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
 		return(pmf_mix)
-	}
+	},
 	lookup_m = function(shift) {
 		# find mean for given shift
 		approx(x=private$table_mv[['shift']], 
-		y=private$table_mv[['mean']], xout=shift)
-	}
+		y=private$table_mv[['mean']], xout=shift)$y
+	},
 	reverse_lookup_m = function(mean) {
 		# find shift for given mean
 		approx(x=private$table_mv[['mean']], 
-		y=private$table_mv[['shift']], xout=mean)
-	}
+		y=private$table_mv[['shift']], xout=mean)$y
+	},
 	lookup_v = function(shift) {
 		# find variance for given shift
 		approx(x=private$table_mv[['shift']], 
-		y=private$table_mv[['variance']], xout=shift)
+		y=private$table_mv[['variance']], xout=shift)$y
 	}
 ))
 
@@ -149,6 +149,60 @@ Sys.time(); with(new.env(), {
 	}
 	round(quantile(abs(tab_diff)), 3)
 }); Sys.time()
+
+# test lookup mean in CarpBinTable
+with(new.env(), {
+	# params
+	size = 200
+	shift_limit = -1
+	num_gridpoints = 300
+	# implied params
+	masspoints = 0:size
+	shifts = seq(from=shift_limit, to=0, length.out=num_gridpoints)
+	# construct table
+	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
+	num_gridpoints=num_gridpoints)
+	testpoints = (shifts[-1]+
+	(shifts[-length(shifts)]))/2 # in between gridpoints!
+	# test 1
+	baseline = sapply(testpoints, function(s) {
+		expect_ao0(size=size, steepness=s, prevalence=0)
+	})
+	efficient = cbtable$lookup_m(testpoints)
+	plot(testpoints, baseline, lwd=3, col='blue')
+	lines(testpoints, efficient, lwd=3, col='red')
+	err1 = baseline-efficient
+	print(quantile(round(abs(err1), 3)))
+	# test 2
+	testpoints_again = cbtable$reverse_lookup_m(efficient)
+	err2 = testpoints-testpoints_again
+	print(quantile(round(abs(err2), 3)))
+})
+
+# test lookup variance in CarpBinTable
+with(new.env(), {
+	# params
+	size = 200
+	shift_limit = -1
+	num_gridpoints = 1e3
+	# implied params
+	masspoints = 0:size
+	shifts = seq(from=shift_limit, to=0, length.out=num_gridpoints)
+	# construct table
+	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
+	num_gridpoints=num_gridpoints)
+	testpoints = (shifts[-1]+
+	(shifts[-length(shifts)]))/2 # in between gridpoints!
+	# test
+	baseline = sapply(testpoints, function(s) {
+		var_ao0(size=size, steepness=s, prevalence=0)
+	})
+	efficient = cbtable$lookup_v(testpoints)
+	plot(testpoints, baseline, lwd=3, col='blue')
+	lines(testpoints, efficient, lwd=3, col='red')
+	err1 = baseline-efficient
+	print(quantile(round(abs(err1), 3)))
+})
 
 # model class AO0
 AO0Model = R6::R6Class('AO0Model', 
