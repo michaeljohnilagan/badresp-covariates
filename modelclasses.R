@@ -258,19 +258,13 @@ private=list(
 	# compute PMF
 	dao0 = function(success_counts, steepness, prevalence) {
 		# compute PMF by class
-		dcarpbin = private$tables$dcarpbin
-		pmf_class0 = dcarpbin(shifts=steepness, 
+		pmf_class0 = private$tables$dcarpbin(shifts=steepness, 
 		success_counts=success_counts)
-		pmf_class1 = dcarpbin(shifts=0, 
+		pmf_class1 = private$tables$dcarpbin(shifts=0, 
 		success_counts=success_counts)
 		# mix the two classes
 		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
 		return(pmf_mix)
-	},
-	# likelihood
-	likelihood = function(success_counts=private$success_counts, 
-	steepness=private$steepness, prevalence=private$prevalence) {
-		return(dao0(success_counts, steepness, prevalence))
 	},
 	# compute posterior probability of CNR
 	calc_postr_cnr = function(success_counts=private$success_counts, 
@@ -283,21 +277,21 @@ private=list(
 		success_counts=success_counts)
 		# numerator and denominator of posterior
 		postr_numerator = prevalence*likelihood_class1
-		postr_denominator = postr_numerator+(1-prevalence)*likelihood_class0
+		postr_denominator = postr_numerator+(1-prevalence)*
+		likelihood_class0
 		postr = postr_numerator/postr_denominator
 		return(postr)
 	},
 	# fitting via maximum likelihood
 	fit_ml = function(success_counts, init) {
-		# set data
-		self$data_set(success_counts=success_counts)
 		# define objective
 		objective = function(u) {
-			lik = self$likelihood(steepness=u[1], prevalence=u[2])
+			lik = self$dao0(success_counts=success_counts, 
+			steepness=u[1], prevalence=u[2])
 			-1*sum(log(lik))
 		}
 		# optimize
-		shift_limit = min(private$tables$par()$shifts)
+		shift_limit = private$tables$par()$shift_limit
 		if(is.null(init)) {
 			init = c(shift_limit/2, 0.5)
 		}
@@ -308,8 +302,9 @@ private=list(
 			method='L-BFGS-B', lower=c(shift_limit, 0), 
 			upper=c(0, 1))$par # using L-BFGS-B
 		}
-		# set params
+		# assign result to object
 		self$par_set(steepness=estimate[1], prevalence=estimate[2])
+		private$success_counts = success_counts
 		return(invisible(NULL))
 	}
 ))
@@ -332,8 +327,10 @@ with(new.env(), {
 	steepness=steepness, prevalence=prevalence)
 	efficient = mod$calc_postr_cnr(success_counts=masspoints, 
 	steepness=steepness, prevalence=prevalence)
+	# compare
 	plot(baseline, efficient); abline(0:1)
-	quantile(round(baseline-efficient, 3))
+	err = efficient-baseline
+	quantile(round(abs(err), 3))
 })
 
 # test: AO0 PMF calculation
@@ -351,19 +348,20 @@ with(new.env(), {
 	# calculate probabilities
 	masspoints = 0:size
 	baseline = dao0(masspoints, size=size, steepness=steepness, 
-	prevalence=prevalence) # non-R6 implementation
+	prevalence=prevalence)
 	efficient = mod$dao0(masspoints, steepness=steepness, 
-	prevalence=prevalence) # R6 implementation
-	# compare non-R6 implementation vs R6
+	prevalence=prevalence)
+	# compare
 	plot(efficient, baseline); abline(0:1)
-	quantile(round(baseline-efficient, 3))
+	err = efficient-baseline
+	quantile(round(abs(err), 3))
 })
 
 # test: fitting
 set.seed(516)
 with(new.env(), {
 	# parameters
-	sampsize = 2e3
+	sampsize = 200
 	size = 200
 	steepness = -2.14
 	prevalence = 0.4
@@ -371,12 +369,13 @@ with(new.env(), {
 	num_gridpoints = 300
 	# generate
 	masspoints = 0:size
-	x = rao0(sampsize, size=size, steepness=steepness, prevalence=prevalence)
+	x = rao0(sampsize, size=size, steepness=steepness, 
+	prevalence=prevalence)
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AO0Model$new(table=cbtable, prevalence=NA, steepness=NA)
+	mod = AO0Model$new(tables=cbtable)
 	print(c(steepness, prevalence))
-	mod$fit_canned(x, init=c(-1, 0.5))
-	unlist(mod$par())
+	mod$fit_ml(x, init=c(-1, 0.4))
+	print(unlist(mod$par())[-1])
 })
