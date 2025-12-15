@@ -225,7 +225,7 @@ private=list(
 		private$size = private$tables$par()$size
 	},
 	# get params
-	par = function() {
+	par_get = function() {
 		list_of_params = list(size=private$size, 
 		steepness=private$steepness, prevalence=private$prevalence)
 		return(list_of_params)
@@ -242,7 +242,7 @@ private=list(
 		return(invisible(NULL))
 	},
 	# get data
-	data = function() {
+	data_get = function() {
 		return(private$success_counts)
 	},
 	# set data
@@ -304,7 +304,7 @@ private=list(
 		}
 		# assign result to object
 		self$par_set(steepness=estimate[1], prevalence=estimate[2])
-		private$success_counts = success_counts
+		self$data_set(success_counts=success_counts)
 		return(invisible(NULL))
 	}
 ))
@@ -375,7 +375,8 @@ with(new.env(), {
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
 	mod = AO0Model$new(tables=cbtable)
+	# fit
 	print(c(steepness, prevalence))
-	mod$fit_ml(x, init=c(-1, 0.4))
-	print(unlist(mod$par())[-1])
+	mod$fit_ml(x, init=c(-1, 0.3))
+	print(unlist(mod$par_get())[-1])
 })
