@@ -306,6 +306,65 @@ private=list(
 		self$par_set(steepness=estimate[1], prevalence=estimate[2])
 		self$data_set(success_counts=success_counts)
 		return(invisible(NULL))
+	},
+	# find params implied by matching to mean for fixed steepness
+	match_implied_params = function(steepness, mix_mean) {
+		flat_mean = private$size/2
+		class0_mean = private$tables$lookup_m(steepness)
+		prevalence = (mix_mean-class0_mean)/(flat_mean-class0_mean)
+		class0_var = private$tables$lookup_v(steepness)
+		matched = list(prevalence=prevalence, class0_mean=class0_mean, 
+		class0_var=class0_var)
+		return(matched)
+	},
+	# fitting via method of moments
+	fit_mm = function(success_counts) {
+		# get empirical moments from data
+		emp_mean = mean(success_counts)
+		emp_var = var(success_counts)
+		# get class 1 (flat) moments
+		flat_mean = private$size/2
+		flat_var = sum((0:private$size)^2)/
+		(private$size+1)-flat_mean^2
+		# get steepest class 0 mean
+		shift_limit = private$tables$par()$shift_limit
+		lowest_mean = private$tables$lookup_m(shift_limit)
+		# emergency exit for extreme empirical mean
+		if(emp_mean>flat_mean) {
+			self$par_set(steepness=0, prevalence=1)
+			self$data_set(success_counts=success_counts)
+			return(invisible(NULL))
+		} # too high
+		if(emp_mean<lowest_mean) {
+			self$par_set(steepness=shift_limit, prevalence=0)
+			self$data_set(success_counts=success_counts)
+			return(invisible(NULL))
+		} # too low
+		# set range for steepness
+		steepness_left = shift_limit
+		steepness_right = private$tables$reverse_lookup_m(emp_mean)
+		# loss function for each steepness
+		lossfun = function(steepness) {
+			# find matching prevalence and class 0 params
+			matched = self$match_implied_params(steepness, mix_mean=emp_mean)
+			# compute implied mixture variance
+			mse_class0_part = matched[['class0_var']]+
+			(matched[['class0_mean']]-emp_mean)^2
+			mse_class1_part = flat_var+(flat_mean-emp_mean)^2
+			implied_mix_var = (1-matched[['prevalence']])*
+			mse_class0_part+matched[['prevalence']]*mse_class1_part
+			# compare
+			abs(implied_mix_var-emp_var)
+		}
+		# optimization
+		fitted_steepness = optimize(f=lossfun, lower=steepness_left, 
+		upper=steepness_right)$minimum
+		fitted_prevalence = self$match_implied_params(fitted_steepness, 
+		mix_mean=emp_mean)[['prevalence']]
+		# assign result to object
+		self$par_set(steepness=fitted_steepness, prevalence=fitted_prevalence)
+		self$data_set(success_counts=success_counts)
+		return(invisible(NULL))
 	}
 ))
 
@@ -358,25 +417,38 @@ with(new.env(), {
 })
 
 # test: fitting
-set.seed(516)
+set.seed(226)
 with(new.env(), {
 	# parameters
-	sampsize = 200
+	sampsize = 100
 	size = 200
 	steepness = -2.14
 	prevalence = 0.4
 	shift_limit = -5
 	num_gridpoints = 300
 	# generate
-	masspoints = 0:size
-	x = rao0(sampsize, size=size, steepness=steepness, 
-	prevalence=prevalence)
+	y = sample(0:1, size=sampsize, prob=c(1-prevalence, prevalence), 
+	replace=TRUE)
+	x_class0 = rcarpbin(sampsize, size=size, shift=steepness)
+	x_class1 = rcarpbin(sampsize, size=size, shift=0)
+	x = ifelse(y==1, x_class1, x_class0)
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
 	mod = AO0Model$new(tables=cbtable)
-	# fit
 	print(c(steepness, prevalence))
+	# fit maximum likelihood
 	mod$fit_ml(x, init=c(-1, 0.3))
 	print(unlist(mod$par_get())[-1])
+	postr_ml = mod$calc_postr_cnr()
+	predbin_ml = round(postr_ml)
+	acc_ml = mean(predbin_ml==y)
+	print(acc_ml)
+	# fit method of moments
+	mod$fit_mm(x)
+	print(unlist(mod$par_get())[-1])
+	postr_mm = mod$calc_postr_cnr()
+	predbin_mm = round(postr_mm)
+	acc_mm = mean(predbin_mm==y)
+	print(acc_mm)
 })
