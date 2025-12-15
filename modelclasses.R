@@ -267,6 +267,11 @@ private=list(
 		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
 		return(pmf_mix)
 	},
+	# likelihood
+	likelihood = function(success_counts=private$success_counts, 
+	steepness=private$steepness, prevalence=private$prevalence) {
+		return(dao0(success_counts, steepness, prevalence))
+	}
 	# compute posterior probability of CNR
 	calc_postr_cnr = function(success_counts=private$success_counts, 
 	steepness=private$steepness, prevalence=private$prevalence) {
@@ -282,15 +287,17 @@ private=list(
 		postr = postr_numerator/postr_denominator
 		return(postr)
 	},
-	fit_canned = function(success_counts, init) {
+	# fitting via maximum likelihood
+	fit_ml = function(success_counts, init) {
+		# set data
+		self$data_set(success_counts=success_counts)
 		# define objective
 		objective = function(u) {
-			likelihood = self$dao0(success_counts, steepness=u[1], 
-			prevalence=u[2])
-			-1*sum(log(likelihood))
+			lik = self$likelihood(steepness=u[1], prevalence=u[2])
+			-1*sum(log(lik))
 		}
 		# optimize
-		shift_limit = private$table$par()$shift_limit
+		shift_limit = min(private$tables$par()$shifts)
 		if(is.null(init)) {
 			init = c(shift_limit/2, 0.5)
 		}
@@ -301,9 +308,8 @@ private=list(
 			method='L-BFGS-B', lower=c(shift_limit, 0), 
 			upper=c(0, 1))$par # using L-BFGS-B
 		}
-		# assign result to object
-		private$steepness = estimate[1]
-		private$prevalence = estimate[2]
+		# set params
+		self$par_set(steepness=estimate[1], prevalence=estimate[2])
 		return(invisible(NULL))
 	}
 ))
