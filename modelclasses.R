@@ -72,16 +72,6 @@ private=list(
 		}
 		return(lookedup)
 	},
-	dao0 = function(prevalences, shifts, success_counts) {
-		# compute PMF by class
-		pmf_class0 = self$dcarpbin(shifts=shifts, 
-		success_counts=success_counts)
-		pmf_class1 = self$dcarpbin(shifts=0, 
-		success_counts=success_counts)
-		# mix the two classes
-		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
-		return(pmf_mix)
-	},
 	# given shift, lookup mean
 	lookup_m = function(shift) {
 		approx(x=private$table_mv[['shift']], 
@@ -224,7 +214,7 @@ private=list(
 	steepness = NULL,
 	prevalence = NULL,
 	success_counts = NULL,
-	table = NULL
+	tables = NULL
 ), public=list(
 	# initialize object
 	initialize = function(table) {
@@ -232,7 +222,7 @@ private=list(
 		stopifnot('CarpBinTable' %in% class(table))
 		# use table information
 		private$table = table
-		private$size = private$table$par()$size
+		private$size = private$tables$par()$size
 	},
 	# get params
 	par = function() {
@@ -264,7 +254,19 @@ private=list(
 	data_clear = function() {
 		self$data_set(success_counts=NULL)
 		return(invisible(NULL))
-	}
+	},
+	# compute PMF
+	dao0 = function(prevalences, shifts, success_counts) {
+		# compute PMF by class
+		pmf_class0 = self$tables$dcarpbin(shifts=shifts, 
+		success_counts=success_counts)
+		pmf_class1 = self$tables$dcarpbin(shifts=0, 
+		success_counts=success_counts)
+		# mix the two classes
+		pmf_mix = prevalences*pmf_class1+(1-prevalences)*pmf_class0
+		return(pmf_mix)
+	},
+	# compute posterior probability of CNR
 	calc_postr_cnr = function(success_counts) {
 		# compute likelihood by class, efficient vs not
 		dcarpbin_efficient = private$table$dcarpbin
