@@ -92,6 +92,11 @@ private=list(
 		# find variance for given shift
 		approx(x=private$table_mv[['shift']], 
 		y=private$table_mv[['variance']], xout=shift)$y
+	},
+	reverse_lookup_v = function(var) {
+		# find shift for given mean
+		approx(x=private$table_mv[['variance']], 
+		y=private$table_mv[['shift']], xout=var)$y
 	}
 ))
 
@@ -169,7 +174,7 @@ with(new.env(), {
 		expect_ao0(size=size, steepness=s, prevalence=0)
 	})
 	efficient = cbtable$lookup_m(testpoints)
-	plot(testpoints, baseline, lwd=3, col='blue')
+	plot(testpoints, baseline, lwd=3, col='blue', ylab='mean')
 	lines(testpoints, efficient, lwd=3, col='red')
 	err1 = baseline-efficient
 	print(quantile(round(abs(err1), 3)))
@@ -184,7 +189,7 @@ with(new.env(), {
 	# params
 	size = 200
 	shift_limit = -1
-	num_gridpoints = 1e3
+	num_gridpoints = 300
 	# implied params
 	masspoints = 0:size
 	shifts = seq(from=shift_limit, to=0, length.out=num_gridpoints)
@@ -193,15 +198,19 @@ with(new.env(), {
 	num_gridpoints=num_gridpoints)
 	testpoints = (shifts[-1]+
 	(shifts[-length(shifts)]))/2 # in between gridpoints!
-	# test
+	# test 1
 	baseline = sapply(testpoints, function(s) {
 		var_ao0(size=size, steepness=s, prevalence=0)
 	})
 	efficient = cbtable$lookup_v(testpoints)
-	plot(testpoints, baseline, lwd=3, col='blue')
-	lines(testpoints, efficient, lwd=3, col='red')
-	err1 = baseline-efficient
+	plot(testpoints, sqrt(baseline), lwd=3, col='blue', ylab='stdev')
+	lines(testpoints, sqrt(efficient), lwd=3, col='red')
+	err1 = sqrt(baseline)-sqrt(efficient)
 	print(quantile(round(abs(err1), 3)))
+	# test 2
+	testpoints_again = cbtable$reverse_lookup_v(efficient)
+	err2 = testpoints-testpoints_again
+	print(quantile(round(abs(err2), 3)))
 })
 
 # model class AO0
