@@ -8,6 +8,7 @@ private=list(
 	table_pmf = NULL,
 	table_mv = NULL
 ), public=list(
+	# initialize
 	initialize = function(size, shift_limit, num_gridpoints) {
 		# assert
 		stopifnot(shift_limit<0) # negative shifts only
@@ -33,12 +34,14 @@ private=list(
 			sum(private$table_pmf[i, ]*masspoints_sqdev)
 		})
 	},
+	# get params
 	par = function() {
 		list_of_params = list(size=private$size, 
 		shift_limit=private$shifts[1], 
 		num_gridpoints=length(private$shifts))
 		return(list_of_params)
 	},
+	# compute dcarpbin for one shift value
 	dcarpbin_sameshift = function(shift, success_counts) {
 		# assert
 		stopifnot(shift<=0)
@@ -50,6 +53,7 @@ private=list(
 		lookedup = pmf[match(success_counts, masspoints)]
 		return(lookedup)
 	},
+	# compute dcarpbin for multiple shift values
 	dcarpbin = function(shifts, success_counts) {
 		if(length(shifts)==1) {
 			# case: only one shift value
@@ -78,23 +82,23 @@ private=list(
 		pmf_mix = prevalence*pmf_class1+(1-prevalence)*pmf_class0
 		return(pmf_mix)
 	},
+	# given shift, lookup mean
 	lookup_m = function(shift) {
-		# find mean for given shift
 		approx(x=private$table_mv[['shift']], 
 		y=private$table_mv[['mean']], xout=shift)$y
 	},
+	# given mean, lookup shift
 	reverse_lookup_m = function(mean) {
-		# find shift for given mean
 		approx(x=private$table_mv[['mean']], 
 		y=private$table_mv[['shift']], xout=mean)$y
 	},
+	# given shift, lookup variance
 	lookup_v = function(shift) {
-		# find variance for given shift
 		approx(x=private$table_mv[['shift']], 
 		y=private$table_mv[['variance']], xout=shift)$y
 	},
+	# given variance, lookup shift
 	reverse_lookup_v = function(var) {
-		# find shift for given mean
 		approx(x=private$table_mv[['variance']], 
 		y=private$table_mv[['shift']], xout=var)$y
 	}
@@ -219,8 +223,10 @@ private=list(
 	size = NULL,
 	steepness = NULL,
 	prevalence = NULL,
+	success_counts = NULL,
 	table = NULL
 ), public=list(
+	# initialize object
 	initialize = function(table) {
 		# assert
 		stopifnot('CarpBinTable' %in% class(table))
@@ -228,19 +234,37 @@ private=list(
 		private$table = table
 		private$size = private$table$par()$size
 	},
+	# get params
 	par = function() {
 		list_of_params = list(size=private$size, 
 		steepness=private$steepness, prevalence=private$prevalence)
 		return(list_of_params)
 	},
+	# set params
 	par_set = function(steepness=NULL, prevalence=NULL) {
 		private$steepness = steepness
 		private$prevalence = prevalence
 		return(invisible(NULL))
 	},
+	# clear params
 	par_clear = function() {
 		self$par_set(steepness=NULL, prevalence=NULL)
+		return(invisible(NULL))
 	},
+	# get data
+	data = function() {
+		return(private$success_counts)
+	},
+	# set data
+	data_set = function(success_counts) {
+		private$success_counts = success_counts
+		return(invisible(NULL))
+	},
+	# clear data
+	data_clear = function() {
+		self$data_set(success_counts=NULL)
+		return(invisible(NULL))
+	}
 	calc_postr_cnr = function(success_counts) {
 		# compute likelihood by class, efficient vs not
 		dcarpbin_efficient = private$table$dcarpbin
