@@ -217,24 +217,29 @@ with(new.env(), {
 AO0Model = R6::R6Class('AO0Model', 
 private=list(
 	size = NULL,
-	steepness = NA,
-	prevalence = NA,
+	steepness = NULL,
+	prevalence = NULL,
 	table = NULL
 ), public=list(
-	initialize = function(table=NULL, steepness=NULL, prevalence=NULL) {
+	initialize = function(table) {
 		# assert
 		stopifnot('CarpBinTable' %in% class(table))
 		# use table information
 		private$table = table
 		private$size = private$table$par()$size
-		# if provided, set params
-		private$steepness = steepness
-		private$prevalence = prevalence
 	},
 	par = function() {
 		list_of_params = list(size=private$size, 
 		steepness=private$steepness, prevalence=private$prevalence)
 		return(list_of_params)
+	},
+	par_set = function(steepness=NULL, prevalence=NULL) {
+		private$steepness = steepness
+		private$prevalence = prevalence
+		return(invisible(NULL))
+	},
+	par_clear = function() {
+		self$par_set(steepness=NULL, prevalence=NULL)
 	},
 	calc_postr_cnr = function(success_counts) {
 		# compute likelihood by class, efficient vs not
