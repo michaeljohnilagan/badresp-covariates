@@ -114,7 +114,7 @@ with(new.env(), {
 	pmf_baseline = as.vector(sapply(testpoints, function(s) {
 		dcarpbin(masspoints, size=size, shift=s)
 	}))
-	plot(pmf_efficient, pmf_baseline); abline(0:1)
+	plot(pmf_efficient, pmf_baseline, main=Sys.time()); abline(0:1)
 	round(pmf_efficient-pmf_baseline, 4)
 })
 
@@ -144,7 +144,8 @@ Sys.time(); with(new.env(), {
 	if(FALSE) {
 		rownames(tab_diff) = masspoints
 		colnames(tab_diff) = round(testpoints, 5)
-		image(x=rownames(tab_diff), y=colnames(tab_diff), z=tab_diff)
+		image(x=rownames(tab_diff), y=colnames(tab_diff), z=tab_diff, 
+		main=Sys.time())
 	}
 	round(quantile(abs(tab_diff)), 3)
 }); Sys.time()
@@ -168,7 +169,8 @@ with(new.env(), {
 		expect_ao0(size=size, steepness=s, prevalence=0)
 	})
 	efficient = cbtable$lookup_m(testpoints)
-	plot(testpoints, baseline, lwd=3, col='blue', ylab='mean')
+	plot(testpoints, baseline, lwd=3, col='blue', ylab='mean', 
+	main=Sys.time())
 	lines(testpoints, efficient, lwd=3, col='red')
 	err1 = baseline-efficient
 	print(quantile(round(abs(err1), 3)))
@@ -197,7 +199,8 @@ with(new.env(), {
 		var_ao0(size=size, steepness=s, prevalence=0)
 	})
 	efficient = cbtable$lookup_v(testpoints)
-	plot(testpoints, sqrt(baseline), lwd=3, col='blue', ylab='stdev')
+	plot(testpoints, sqrt(baseline), lwd=3, col='blue', ylab='stdev', 
+	main=Sys.time())
 	lines(testpoints, sqrt(efficient), lwd=3, col='red')
 	err1 = sqrt(baseline)-sqrt(efficient)
 	print(quantile(round(abs(err1), 3)))
@@ -387,7 +390,7 @@ with(new.env(), {
 	efficient = mod$calc_postr_cnr(success_counts=masspoints, 
 	steepness=steepness, prevalence=prevalence)
 	# compare
-	plot(baseline, efficient); abline(0:1)
+	plot(baseline, efficient, main=Sys.time()); abline(0:1)
 	err = efficient-baseline
 	quantile(round(abs(err), 3))
 })
@@ -411,7 +414,7 @@ with(new.env(), {
 	efficient = mod$dao0(masspoints, steepness=steepness, 
 	prevalence=prevalence)
 	# compare
-	plot(efficient, baseline); abline(0:1)
+	plot(efficient, baseline, main=Sys.time()); abline(0:1)
 	err = efficient-baseline
 	quantile(round(abs(err), 3))
 })
@@ -451,4 +454,178 @@ with(new.env(), {
 	predbin_mm = round(postr_mm)
 	acc_mm = mean(predbin_mm==y)
 	print(acc_mm)
+})
+
+# model class AO1
+AO1Model = R6::R6Class('AO1Model', 
+private=list(
+	size = NULL,
+	steepness = NULL,
+	slopes = NULL,
+	features = NULL,
+	success_counts = NULL,
+	tables = NULL
+), public=list(
+	# initialize object
+	initialize = function(tables) {
+		# assert
+		stopifnot('CarpBinTable' %in% class(tables))
+		# use table information
+		private$tables = tables
+		private$size = private$tables$par()$size
+	},
+	# get params
+	par_get = function() {
+		list_of_params = list(size=private$size, 
+		steepness=private$steepness, slopes=private$slopes)
+		return(list_of_params)
+	},
+	# set params
+	par_set = function(steepness=NULL, slopes=NULL) {
+		private$steepness = steepness
+		private$slopes = slopes
+		return(invisible(NULL))
+	},
+	# clear params
+	par_clear = function() {
+		self$par_set(steepness=NULL, slopes=NULL)
+		return(invisible(NULL))
+	},
+	# get data
+	data_get = function() {
+		list_of_data = list(success_counts=private$success_counts,
+		features=private$features)
+		return(list_of_data)
+	},
+	# set data
+	data_set = function(success_counts, features) {
+		private$success_counts = success_counts
+		private$features = features
+		return(invisible(NULL))
+	},
+	# clear data
+	data_clear = function() {
+		self$data_set(success_counts=NULL, features=NULL)
+		return(invisible(NULL))
+	},
+	# compute prevalences
+	calc_prev = function(features, slopes) {
+		prevalences = plogis(features%*%slopes)
+		return(prevalences)
+	},
+	# compute AO0 PMF
+	dao0 = function(success_counts, steepness, prevalences) {
+		# compute PMF by class
+		pmf_class0 = private$tables$dcarpbin(shifts=steepness, 
+		success_counts=success_counts)
+		pmf_class1 = private$tables$dcarpbin(shifts=0, 
+		success_counts=success_counts)
+		# mix the two classes
+		pmf_mix = prevalences*pmf_class1+(1-prevalences)*pmf_class0
+		return(pmf_mix)
+	},
+	# compute AO1 PMF
+	dao1 = function(success_counts, steepness, features, slopes) {
+		prevalences = self$calc_prev(features=features, slopes=slopes)
+		pmf_mix = self$dao0(success_counts=success_counts, 
+		steepness=steepness, prevalences=prevalences)
+		return(pmf_mix)
+	},
+	# compute posterior probability of CNR
+	calc_postr_cnr = function(success_counts=private$success_counts, 
+	steepness=private$steepness, features=private$features, 
+	slopes=private$slopes) {
+		# compute class 1 (CNR) prior
+		prevalence = self$calc_prev(features=features, slopes=slopes)
+		# compute likelihood by class
+		likelihood_class0 = private$tables$dcarpbin(shifts=steepness, 
+		success_counts=success_counts)
+		likelihood_class1 = private$tables$dcarpbin(shifts=0, 
+		success_counts=success_counts)
+		# numerator and denominator of posterior
+		postr_numerator = prevalence*likelihood_class1
+		postr_denominator = postr_numerator+(1-prevalence)*
+		likelihood_class0
+		postr = postr_numerator/postr_denominator
+		return(postr)
+	},
+	# fitting via maximum likelihood
+	fit_ml = function(success_counts, features, init=NULL) {
+		# define objective as negative log likelihood
+		negloglik = function(u) {
+			lik = self$dao1(success_counts=success_counts, 
+			steepness=u[1], features=features, slopes=u[-1])
+			-1*sum(log(lik))
+		}
+		# optimize
+		shift_limit = private$tables$par()$shift_limit
+		if(is.null(init)) {
+			init = c(shift_limit/2, rep(0, times=ncol(features)))
+		}
+		estimate = optim(init, fn=negloglik)$par # using nelder-mead
+		# force valid steepness
+		if(estimate[1]>0) {
+			estimate[1] = 0
+		}
+		# assign result to object
+		self$par_set(steepness=estimate[1], slopes=estimate[-1])
+		self$data_set(success_counts=success_counts, features=features)
+		return(invisible(NULL))
+	}
+))
+
+# test: posterior calculation
+with(new.env(), {
+	# parameters
+	size = 200
+	steepness = -1.411
+	prevalence = 0.11
+	shift_limit = -10
+	num_gridpoints = 200
+	# create objects
+	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
+	num_gridpoints=num_gridpoints)
+	mod = AO1Model$new(table=cbtable)
+	print(class(mod))
+	# calculate probabilities
+	masspoints = 0:size
+	baseline = calc_postr_cnr_ao0(masspoints, size=size, 
+	steepness=steepness, prevalence=prevalence)
+	efficient = mod$calc_postr_cnr(success_counts=masspoints, 
+	steepness=steepness, features=cbind(rep(1, length.out=length(masspoints))), 
+	slopes=rbind(qlogis(prevalence)))
+	# compare
+	plot(baseline, efficient, main=Sys.time()); abline(0:1)
+	err = efficient-baseline
+	quantile(round(abs(err), 3))
+})
+
+# test: fitting
+set.seed(226)
+with(new.env(), {
+	# parameters
+	sampsize = 300
+	size = 200
+	steepness = -2.14
+	prevalence = 0.4
+	shift_limit = -5
+	num_gridpoints = 300
+	# generate
+	y = sample(0:1, size=sampsize, prob=c(1-prevalence, prevalence), 
+	replace=TRUE)
+	x_class0 = rcarpbin(sampsize, size=size, shift=steepness)
+	x_class1 = rcarpbin(sampsize, size=size, shift=0)
+	x = ifelse(y==1, x_class1, x_class0)
+	# create objects
+	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
+	num_gridpoints=num_gridpoints)
+	mod = AO1Model$new(tables=cbtable)
+	print(c(steepness, qlogis(prevalence)))
+	# fit maximum likelihood
+	mod$fit_ml(x, cbind(rep(1, times=length(x))), init=NULL)
+	print(unlist(mod$par_get())[-1])
+	postr_ml = mod$calc_postr_cnr()
+	predbin_ml = round(postr_ml)
+	acc_ml = mean(predbin_ml==y)
+	print(acc_ml)
 })
