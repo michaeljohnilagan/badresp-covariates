@@ -379,11 +379,11 @@ with(new.env(), {
 	print(c(steepness, qlogis(prevalence)))
 	# fit
 	mod$fit(sc, cbind(rep(1, times=length(sc))), init=NULL)
-	print(mod$par_get()[-1])
+	print(unlist(mod$par_get()[-1]))
 	# predict
 	postr = mod$calc_postr_cnr()
-	boxplot(postr~y); abline(h=0.5)
-	acc = mean(round(predbin)==y)
+	boxplot(postr~y)
+	acc = mean(round(postr)==y)
 	print(acc)
 })
 
