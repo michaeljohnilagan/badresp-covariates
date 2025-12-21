@@ -397,6 +397,12 @@ public=list(
 		steepness=private$steepness, prevalence=plogis(private$slopes))
 		return(list_of_params)
 	},
+	# get params in terms of AO0
+	par_get_ao1 = function() {
+		list_of_params = list(size=private$size, 
+		steepness=private$steepness, slopes=private$slopes)
+		return(list_of_params)
+	},
 	# set params
 	par_set = function(steepness=NULL, prevalence=NULL) {
 		stopifnot(length(prevalence)==1)
