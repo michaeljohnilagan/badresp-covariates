@@ -569,7 +569,83 @@ private=list(
 		}
 		# assign result to object
 		self$par_set(steepness=estimate[1], slopes=estimate[-1])
-		self$data_set(success_counts=success_counts, features=features)
+		self$data_set(success_counts=success_counts, 
+		features=features)
+		return(invisible(NULL))
+	},
+	# moment matching
+	match_implied_params = function(steepness, mix_mean) {
+		# constants
+		flat_mean = private$size/2
+		flat_var = sum((0:private$size)^2)/
+		(private$size+1)-flat_mean^2
+		class0_mean = private$tables$lookup_m(steepness)
+		class0_var = private$tables$lookup_v(steepness)
+		# calculate prevalence
+		prevalence = (mix_mean-class0_mean)/(flat_mean-class0_mean)
+		gap = 0.001
+		prevalence = ifelse(prevalence>(1-gap), 1-gap, prevalence)
+		prevalence = ifelse(prevalence<(0+gap), 0+gap, prevalence)
+		# calculate mixture variance
+		mse_class0_part = class0_var+(class0_mean-mix_mean)^2
+		mse_class1_part = flat_var+(flat_mean-mix_mean)^2
+		mix_var = (1-prevalence)*mse_class0_part+prevalence*
+		mse_class1_part
+		# put together
+		together = data.frame(mix_mean=mix_mean, steepness=steepness, 
+		prevalence=prevalence, mix_var=mix_var)
+		return(together)
+	},
+	# fitting via method of moments
+	fit_mm = function(success_counts, features) {
+		# helper function
+		wls = function(response, features, weight) {
+			weight_mat = diag(weight)
+			features = as.matrix(features)
+			transposed_features = t(features)
+			invgram = solve(transposed_features%*%weight_mat%*%
+			features)
+			slopes = invgram%*%transposed_features%*%
+			weight_mat%*%response
+			return(slopes)
+		}
+		# helper function
+		steepness2slopes = function(u) {
+			# given steepness, get prevalences and variances
+			df = self$match_implied_params(steepness=u, 
+			mix_mean=success_counts)
+			# do weighted least squares
+			response = qlogis(df[['prevalence']])
+			weight = 1/df[['mix_var']]
+			slopes = wls(response=response, 
+			features=features, weight=weight)
+			# store slopes and information for calculating loss
+			together = list(slopes=slopes, response=response, 
+			weight=weight)
+			return(together)
+		}
+		# define objective
+		objective = function(steepness) {
+			# use helper functions
+			intermediate <<- steepness2slopes(steepness)
+			# calculate loss
+			resid = intermediate$response-
+			features%*%intermediate$slopes
+			weighted_sq_resid = resid^2*intermediate$weight
+			sum(weighted_sq_resid)
+		}
+		# define input range
+		lower = private$tables$par()$shift_limit
+		upper = 0
+		# optimize
+		intermediate = list()
+		fitted_steepness = optimize(f=objective , lower=lower, 
+		upper=upper)$minimum
+		fitted_slopes = intermediate$slopes
+		# assign result to object
+		self$par_set(steepness=fitted_steepness, slopes=fitted_slopes)
+		self$data_set(success_counts=success_counts, 
+		features=features)
 		return(invisible(NULL))
 	}
 ))
@@ -600,7 +676,7 @@ with(new.env(), {
 	quantile(round(abs(err), 3))
 })
 
-# test: fitting
+# test: fitting maximum likelihood
 set.seed(226)
 with(new.env(), {
 	# parameters
@@ -621,11 +697,41 @@ with(new.env(), {
 	num_gridpoints=num_gridpoints)
 	mod = AO1Model$new(tables=cbtable)
 	print(c(steepness, qlogis(prevalence)))
-	# fit maximum likelihood
+	# fit
 	mod$fit_ml(x, cbind(rep(1, times=length(x))), init=NULL)
 	print(unlist(mod$par_get())[-1])
 	postr_ml = mod$calc_postr_cnr()
 	predbin_ml = round(postr_ml)
 	acc_ml = mean(predbin_ml==y)
 	print(acc_ml)
+})
+
+# test: fitting method of moments
+set.seed(226)
+with(new.env(), {
+	# parameters
+	features = as.matrix(scale(MASS::Pima.tr[c('skin', 'bmi')]))
+	features = rbind(features, features, features)
+	size = 200
+	steepness = -2.14
+	slopes = c(1, -1)
+	prevalence = plogis(features%*%slopes)
+	shift_limit = -5
+	num_gridpoints = 300
+	# generate
+	n = nrow(features)
+	y = rbinom(n, size=1, prob=prevalence)
+	x_class0 = rcarpbin(n, size=size, shift=steepness)
+	x_class1 = rcarpbin(n, size=size, shift=0)
+	x = ifelse(y==1, x_class1, x_class0)
+	# create objects
+	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
+	num_gridpoints=num_gridpoints)
+	mod = AO1Model$new(tables=cbtable)
+	print(c(steepness, slopes))
+	# fit
+	mod$fit_mm(x, features)
+	print(unlist(mod$par_get())[-1])
+	postr_mm = mod$calc_postr_cnr()
+	boxplot(postr_mm~y)
 })
