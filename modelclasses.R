@@ -303,6 +303,28 @@ private=list(
 		postr = postr_numerator/postr_denominator
 		return(postr)
 	},
+	# coordinates for decision boundary
+	coords_decibo = function(success_counts=private$success_counts,
+	steepness=private$steepness, features=private$features, 
+	slopes=private$slopes) {
+		# get all mass points
+		masspoints = 0:private$size
+		# compute the linear combination values
+		lin_comb = as.matrix(features)%*%slopes
+		# for each linear combination value, get the boundary count
+		boundary_count = sapply(lin_comb, function(u) {
+			postr = self$calc_postr_cnr(
+			success_counts=masspoints, 
+			features=cbind(rep(1, times=length(masspoints))),
+			slopes=u)
+			approx(x=postr, y=masspoints, xout=0.5)$y
+		})
+		# make sorted dataframe
+		df = data.frame(lincomb=lin_comb, boundarycount=boundary_count, 
+		rawcount=success_counts)
+		df_ordered = df[order(df[['lincomb']]), ]
+		return(df_ordered)
+	},
 	# fitting via maximum likelihood
 	fit = function(success_counts, features, init=NULL) {
 		# define objective as negative log likelihood
@@ -363,12 +385,13 @@ with(new.env(), {
 	sampsize = 300
 	size = 200
 	steepness = -2.14
-	prevalence = 0.4
+	features = cbind(1, runif(sampsize, -1, +1), runif(sampsize, -1, +1))
+	slopes = c(1, 1, -1)
 	shift_limit = -5
 	num_gridpoints = 300
 	# generate
-	y = sample(0:1, size=sampsize, prob=c(1-prevalence, prevalence), 
-	replace=TRUE)
+	prevalence = plogis(features%*%slopes)
+	y = rbinom(length(prevalence), size=1, prob=prevalence)
 	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
 	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
 	sc = ifelse(y==1, sc_class1, sc_class0)
@@ -376,15 +399,54 @@ with(new.env(), {
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
 	mod = AO1Model$new(tables=cbtable)
-	print(c(steepness, qlogis(prevalence)))
+	print(c(steepness, slopes))
 	# fit
-	mod$fit(sc, cbind(rep(1, times=length(sc))), init=NULL)
-	print(unlist(mod$par_get()[-1]))
+	mod$fit(sc, features, init=NULL)
+	print(mod$par_get()[-1])
 	# predict
 	postr = mod$calc_postr_cnr()
 	boxplot(postr~y)
-	acc = mean(round(postr)==y)
+	predbin = round(postr)
+	correct = predbin==y
+	acc = mean(correct)
 	print(acc)
+	print(table(predbin, y))
+})
+
+# test: decision boundary
+set.seed(2230)
+with(new.env(), {
+	# parameters
+	sampsize = 200
+	size = 200
+	steepness = -1.21
+	features = cbind(1, runif(sampsize, -1, +1))
+	slopes = c(-1, 1)
+	shift_limit = -5
+	num_gridpoints = 300
+	# generate
+	prevalence = plogis(features%*%slopes)
+	y = rbinom(length(prevalence), size=1, prob=prevalence)
+	print(table(y))
+	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
+	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
+	sc = ifelse(y==1, sc_class1, sc_class0)
+	# create objects
+	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
+	num_gridpoints=num_gridpoints)
+	mod = AO1Model$new(tables=cbtable)
+	# plot
+	mod$data_set(success_counts=sc, features=features)
+	mod$par_set(steepness=steepness, slopes=slopes)
+	postr = mod$calc_postr_cnr()
+	predbin = round(postr)
+	correct = predbin==y
+	boundary_coords = mod$coords_decibo()
+	plot(qlogis(prevalence), sc, pch=as.character(y), 
+	col=ifelse(correct, 'green', 'red'), xlab='covariate', 
+	ylab='success count')
+	lines(boundary_coords[['lincomb']], boundary_coords[['boundarycount']])
+	print(table(predbin, y))
 })
 
 # model class AO0
