@@ -303,6 +303,30 @@ private=list(
 		postr = postr_numerator/postr_denominator
 		return(postr)
 	},
+	# calculate bayes classifier metrics
+	calc_metrics = function(true_class_labels, 
+	success_counts=private$success_counts, steepness=private$steepness, 
+	features=private$features, slopes=private$slopes) {
+		# get predicted labels
+		class1prob = self$calc_postr_cnr(success_counts=success_counts,
+		steepness=steepness, features=features, slopes=slopes)
+		predicted_class_labels = round(class1prob)
+		# metrics
+		confmat = table(pred=predicted_class_labels, 
+		true=true_class_labels)
+		acc = mean(true_class_labels==predicted_class_labels)
+		sens = mean(predicted_class_labels[true_class_labels==1]==1)
+		spec = mean(predicted_class_labels[true_class_labels==0]==0)
+		ppv = mean(true_class_labels[predicted_class_labels==1]==1)
+		npv = mean(true_class_labels[predicted_class_labels==0]==0)
+		flagrate = mean(predicted_class_labels==1)
+		# put together
+		metrics = list(confusion=confmat, accuracy=acc, 
+		sensitivity=sens, specificity=spec, 
+		positive_predictive_value=ppv, negative_predictive_value=npv,
+		flag_rate=flagrate)
+		return(metrics)
+	},
 	# coordinates for decision boundary
 	coords_decibo = function(success_counts=private$success_counts,
 	steepness=private$steepness, features=private$features, 
@@ -460,6 +484,30 @@ public=list(
 		likelihood_class0
 		postr = postr_numerator/postr_denominator
 		return(postr)
+	},
+	# calculate bayes classifier metrics
+	calc_metrics = function(true_class_labels, 
+	success_counts=private$success_counts, steepness=private$steepness, 
+	prevalence=plogis(private$slopes)) {
+		# get predicted labels
+		class1prob = self$calc_postr_cnr(success_counts=success_counts,
+		steepness=steepness, prevalence=prevalence)
+		predicted_class_labels = round(class1prob)
+		# metrics
+		confmat = table(pred=predicted_class_labels, 
+		true=true_class_labels)
+		acc = mean(true_class_labels==predicted_class_labels)
+		sens = mean(predicted_class_labels[true_class_labels==1]==1)
+		spec = mean(predicted_class_labels[true_class_labels==0]==0)
+		ppv = mean(true_class_labels[predicted_class_labels==1]==1)
+		npv = mean(true_class_labels[predicted_class_labels==0]==0)
+		flagrate = mean(predicted_class_labels==1)
+		# put together
+		metrics = list(confusion=confmat, accuracy=acc, 
+		sensitivity=sens, specificity=spec, 
+		positive_predictive_value=ppv, negative_predictive_value=npv,
+		flag_rate=flagrate)
+		return(metrics)
 	},
 	# fitting via maximum likelihood
 	fit = function(success_counts, init=NULL) {
@@ -641,7 +689,7 @@ with(new.env(), {
 	size = 200
 	steepness = -0.81
 	features = cbind(1, runif(sampsize, -1, +1))
-	slopes = c(-1, 1)
+	slopes = c(-1, 2)
 	shift_limit = -5
 	num_gridpoints = 300
 	# generate
@@ -651,36 +699,43 @@ with(new.env(), {
 	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
 	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
 	sc = ifelse(y==1, sc_class1, sc_class0)
-	# create objects
+	# create carpbin tables
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AO1Model$new(tables=cbtable)
-	mod0 = AO0Model$new(tables=cbtable)
-	# plot AO1 boundary
-	mod$data_set(success_counts=sc, features=features)
-	mod$par_set(steepness=steepness, slopes=slopes)
-	postr = mod$calc_postr_cnr()
-	predbin = round(postr)
-	correct = predbin==y
-	boundary_coords = mod$coords_decibo()
+	# set true params AO1
+	mod1 = AO1Model$new(tables=cbtable)
+	mod1$data_set(success_counts=sc, features=features)
+	mod1$par_set(steepness=steepness, slopes=slopes)
+	# calculate metrics AO1
+	message('AO1')
+	met1 = mod1$calc_metrics(true_class_labels=y)
+	metric_shortnames = data.frame(old=c('accuracy', 'sensitivity', 
+	'specificity', 'positive predictive value', 
+	'negative predictive value', 'flag rate'), new=c('acc', 'sens', 
+	'spec', 'ppv', 'npv', 'flagrate'))
+	print(met1$confusion)
+	print(unlist(setNames(met1[-1], metric_shortnames$new)))
+	# draw decision boundary AO1
+	boundary_coords = mod1$coords_decibo()
+	correct1 = y==round(mod1$calc_postr_cnr())
 	plot(qlogis(prevalence), sc, pch=as.character(y), 
-	col=ifelse(correct, 'green', 'red'), xlab='covariate', 
+	col=ifelse(correct1, 'green', 'red'), xlab='covariate', 
 	ylab='success count')
 	lines(boundary_coords[['lincomb']], boundary_coords[['boundarycount']])
-	print(table(predbin, y))
-	print(mean(correct))
-	# plot AO0 boundary
+	# fit AO0
+	mod0 = AO0Model$new(tables=cbtable)
 	mod0$fit(sc, init=c(-1, 0.3))
+	# calculate metrics AO0
+	message('AO0')
+	met0 = mod0$calc_metrics(true_class_labels=y)
+	print(met0$confusion)
+	print(round(unlist(setNames(met0[-1], metric_shortnames$new)), 3))
+	# draw decision boundary AO0
 	masspoints = 0:size
 	sc2postr = data.frame(sc=masspoints,
 	postr=mod0$calc_postr_cnr(success_counts=masspoints))
 	sc_threshold = approx(x=sc2postr[['postr']], y=sc2postr[['sc']], 
 	xout=0.5)$y
 	abline(h=sc_threshold)
-	postr0 = mod0$calc_postr_cnr()
-	predbin0 = round(postr0)
-	correct0 = predbin0==y
-	print(table(predbin0, y))
-	print(mean(correct0))
 })
 
