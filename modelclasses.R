@@ -413,42 +413,6 @@ with(new.env(), {
 	print(table(predbin, y))
 })
 
-# test: decision boundary
-set.seed(2230)
-with(new.env(), {
-	# parameters
-	sampsize = 200
-	size = 200
-	steepness = -1.21
-	features = cbind(1, runif(sampsize, -1, +1))
-	slopes = c(-1, 1)
-	shift_limit = -5
-	num_gridpoints = 300
-	# generate
-	prevalence = plogis(features%*%slopes)
-	y = rbinom(length(prevalence), size=1, prob=prevalence)
-	print(table(y))
-	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
-	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
-	sc = ifelse(y==1, sc_class1, sc_class0)
-	# create objects
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	mod = AO1Model$new(tables=cbtable)
-	# plot
-	mod$data_set(success_counts=sc, features=features)
-	mod$par_set(steepness=steepness, slopes=slopes)
-	postr = mod$calc_postr_cnr()
-	predbin = round(postr)
-	correct = predbin==y
-	boundary_coords = mod$coords_decibo()
-	plot(qlogis(prevalence), sc, pch=as.character(y), 
-	col=ifelse(correct, 'green', 'red'), xlab='covariate', 
-	ylab='success count')
-	lines(boundary_coords[['lincomb']], boundary_coords[['boundarycount']])
-	print(table(predbin, y))
-})
-
 # model class AO0
 AO0Model = R6::R6Class('AO0Model', 
 inherit=AO1Model,
@@ -668,3 +632,55 @@ with(new.env(), {
 	acc_mm = mean(round(postr_mm)==y)
 	print(acc_mm)
 })
+
+# test: decision boundary
+set.seed(2230)
+with(new.env(), {
+	# parameters
+	sampsize = 200
+	size = 200
+	steepness = -0.81
+	features = cbind(1, runif(sampsize, -1, +1))
+	slopes = c(-1, 1)
+	shift_limit = -5
+	num_gridpoints = 300
+	# generate
+	prevalence = plogis(features%*%slopes)
+	y = rbinom(length(prevalence), size=1, prob=prevalence)
+	print(table(y))
+	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
+	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
+	sc = ifelse(y==1, sc_class1, sc_class0)
+	# create objects
+	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
+	num_gridpoints=num_gridpoints)
+	mod = AO1Model$new(tables=cbtable)
+	mod0 = AO0Model$new(tables=cbtable)
+	# plot AO1 boundary
+	mod$data_set(success_counts=sc, features=features)
+	mod$par_set(steepness=steepness, slopes=slopes)
+	postr = mod$calc_postr_cnr()
+	predbin = round(postr)
+	correct = predbin==y
+	boundary_coords = mod$coords_decibo()
+	plot(qlogis(prevalence), sc, pch=as.character(y), 
+	col=ifelse(correct, 'green', 'red'), xlab='covariate', 
+	ylab='success count')
+	lines(boundary_coords[['lincomb']], boundary_coords[['boundarycount']])
+	print(table(predbin, y))
+	print(mean(correct))
+	# plot AO0 boundary
+	mod0$fit(sc, init=c(-1, 0.3))
+	masspoints = 0:size
+	sc2postr = data.frame(sc=masspoints,
+	postr=mod0$calc_postr_cnr(success_counts=masspoints))
+	sc_threshold = approx(x=sc2postr[['postr']], y=sc2postr[['sc']], 
+	xout=0.5)$y
+	abline(h=sc_threshold)
+	postr0 = mod0$calc_postr_cnr()
+	predbin0 = round(postr0)
+	correct0 = predbin0==y
+	print(table(predbin0, y))
+	print(mean(correct0))
+})
+
