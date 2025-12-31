@@ -457,6 +457,77 @@ private=list(
 		self$data_set(success_counts=success_counts, 
 		features=features)
 		return(invisible(NULL))
+	},
+	# fitting via EM
+	fit_em = function(success_counts, features, maxit, init=NULL, tol=0.01) {
+		# initial values
+		if(is.null(init)) {
+			init_steepness = self$match_moments(
+			success_counts=success_counts)$steepness
+			init_slopes = suppressWarnings(cor(success_counts, features))
+			init_slopes = ifelse(is.na(init_slopes), 0, init_slopes)
+			init = c(init_steepness, init_slopes)
+		}
+		# projection matrix for least squares
+		features = as.matrix(features)
+		projection_matrix = solve(t(features)%*%features)%*%t(features)
+		# main loop
+		old_pars = init
+		old_ll = self$loglikelihood(steepness=old_pars[1], 
+		slopes=old_pars[-1], features=features, 
+		success_counts=success_counts)
+		if(TRUE) {
+			message(c('init | LL: ', 
+			round(old_ll, 3)))
+		}
+		for(iter in 1:maxit) {
+			# from old params, calculate posterior
+			postr = self$calc_postr_cnr(
+			success_counts=success_counts, features=features, 
+			steepness=old_pars[1], slopes=old_pars[-1])
+			# from posterior, estimate new steepness
+			weights_for_moment = (1-postr)/sum(1-postr)
+			if(all(weights_for_moment==0)|all(weights_for_moment==1)) {
+				break
+			}
+			class0_mean = sum(weights_for_moment*success_counts)
+			if(class0_mean<0|is.na(class0_mean)) {
+				break
+			}
+			new_steepness = private$tables$reverse_lookup_m(
+			class0_mean)
+			# from posterior, estimate new slopes
+			logits = qlogis(postr)
+			new_slopes = as.vector(projection_matrix%*%logits)
+			# report
+			new_pars = c(new_steepness, new_slopes)
+			new_ll = self$loglikelihood(steepness=new_pars[1], 
+			slopes=new_pars[-1], features=features, 
+			success_counts=success_counts)
+			if(TRUE) {
+				message(c('iter ', iter, ' | LL: ', 
+				round(new_ll, 3), ' | mean postr: ', 
+				round(mean(postr), 3)))
+			}
+			# stopping criterion
+			if(new_ll<old_ll|is.na(new_ll)) {
+				message('worsened likelihood')
+				new_pars = old_pars
+				break
+			}
+			converged = sum(abs(new_pars-old_pars))<(tol*length(new_pars))
+			if(converged) {
+				message('converged!')
+				break
+			}
+			# prepare next iteration
+			old_pars = new_pars
+			old_ll = new_ll
+		}
+		# assign result to object
+		self$par_set(steepness=new_pars[1], slopes=new_pars[-1])
+		self$data_set(success_counts=success_counts, features=features)
+		return(invisible(NULL))
 	}
 ))
 
@@ -484,46 +555,6 @@ with(new.env(), {
 	plot(baseline, efficient, main=Sys.time()); abline(0:1)
 	err = efficient-baseline
 	quantile(round(abs(err), 3))
-})
-
-# test: AO1 fitting
-set.seed(226)
-with(new.env(), {
-	# parameters
-	sampsize = 300
-	size = 200
-	steepness = -2.14
-	features = cbind(1, runif(sampsize, -1, +1), runif(sampsize, -1, +1))
-	slopes = c(1, 1, -1)
-	shift_limit = -5
-	num_gridpoints = 300
-	# generate
-	prevalence = plogis(features%*%slopes)
-	y = rbinom(length(prevalence), size=1, prob=prevalence)
-	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
-	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
-	sc = ifelse(y==1, sc_class1, sc_class0)
-	# create objects
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	mod = AO1Model$new(tables=cbtable)
-	print(c(steepness, slopes))
-	# fit
-	mod$fit(sc, features, init=NULL)
-	print(mod$par_get()[-1])
-	# shorten metrics names
-	metric_shortnames = setNames(c('confmat', 'acc', 'sens', 'spec', 
-	'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 'sensitivity', 
-	'specificity', 'positive_predictive_value', 
-	'negative_predictive_value', 'flag_rate'))
-	# calculate metrics
-	met = mod$calc_metrics(true_class_labels=y)
-	names(met) = metric_shortnames[names(met)]
-	print(met$confmat)
-	print(round(unlist(met[-1]), 3))
-	# boxplot
-	postr = mod$calc_postr_cnr()
-	boxplot(postr~y)
 })
 
 # model class AO0
@@ -688,39 +719,85 @@ with(new.env(), {
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
 	mod_ml = AO0Model$new(tables=cbtable)
-	mod_mm = AO0Model$new(tables=cbtable)
-	print(c(steepness, prevalence))
-	# shorten metrics names
-	metric_shortnames = setNames(c('confmat', 'acc', 'sens', 'spec', 
-	'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 'sensitivity', 
-	'specificity', 'positive_predictive_value', 
-	'negative_predictive_value', 'flag_rate'))
+	mod_mm = AO0Model$new(tables=cbtable)	
+	# stuff to display
+	display = function(mod) {
+		print(mod$loglikelihood())
+		print(lapply(mod$par_get()[-1], round, digits=3))
+		met = mod$calc_metrics(true_class_labels=y)
+		metric_shortnames = setNames(c('confmat', 'acc', 'sens', 
+		'spec', 'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 
+		'sensitivity', 'specificity', 'positive_predictive_value', 
+		'negative_predictive_value', 'flag_rate'))
+		names(met) = metric_shortnames[names(met)]
+		print(round(unlist(met[-1]), 3))
+	}
 	# fit maximum likelihood
 	message('ML')
 	mod_ml$fit(sc, init=c(-1, 0.3))
-	print(mod_ml$loglikelihood())
-	print(round(unlist(mod_ml$par_get())[-1], 3))
-	postr_ml = mod_ml$calc_postr_cnr()
-	boxplot(postr_ml~y, main=Sys.time())
-	met_ml = mod_ml$calc_metrics(true_class_labels=y)
-	names(met_ml) = metric_shortnames[names(met_ml)]
-	print(met_ml$confmat)
-	print(round(unlist(met_ml[-1]), 3))
+	display(mod_ml)
 	# fit method of moments
 	message('MM')
 	mod_mm$fit_mm(sc)
-	print(mod_mm$loglikelihood())
-	print(round(unlist(mod_mm$par_get())[-1], 3))
-	postr_mm = mod_mm$calc_postr_cnr()
-	boxplot(postr_mm~y, main=Sys.time())
-	met_mm = mod_mm$calc_metrics(true_class_labels=y)
-	names(met_mm) = metric_shortnames[names(met_mm)]
-	print(met_mm$confmat)
-	print(round(unlist(met_mm[-1]), 3))
+	display(mod_mm)
+})
+
+# test: AO1 fitting
+set.seed(221)
+with(new.env(), {
+	# parameters
+	sampsize = 150
+	size = 200
+	steepness = -1.21
+	slopes = c(-0.5*1, c(1, -1, +2, -2))
+	features = cbind(1, replicate(length(slopes)-1, {
+		runif(sampsize, -1, +1)
+	}))
+	shift_limit = -5
+	num_gridpoints = 300
+	# generate
+	prevalence = plogis(features%*%slopes)
+	y = rbinom(length(prevalence), size=1, prob=prevalence)
+	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
+	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
+	sc = ifelse(y==1, sc_class1, sc_class0)
+	# create objects
+	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
+	num_gridpoints=num_gridpoints)
+	mod1_ml = AO1Model$new(tables=cbtable)
+	mod1_em = AO1Model$new(tables=cbtable)
+	mod0 = AO0Model$new(tables=cbtable)
+	# stuff to display
+	display = function(mod) {
+		print(mod$loglikelihood())
+		print(lapply(mod$par_get()[-1], round, digits=3))
+		met = mod$calc_metrics(true_class_labels=y)
+		metric_shortnames = setNames(c('confmat', 'acc', 'sens', 
+		'spec', 'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 
+		'sensitivity', 'specificity', 'positive_predictive_value', 
+		'negative_predictive_value', 'flag_rate'))
+		names(met) = metric_shortnames[names(met)]
+		print(round(unlist(met[-1]), 3))
+	}
+	# AO0 MM
+	message('AO0-MM')
+	mod0$fit_mm(sc)
+	display(mod0)
+	# AO1 EM
+	message('EM')
+	mmest = mod0$par_get()
+	init = c(mmest$steepness, qlogis(mmest$prevalence), 
+	cor(sc, features[, -1]))
+	mod1_em$fit_em(sc, features, maxit=10, init=NULL)
+	display(mod1_em)
+	# AO1 canned ML
+	message('ML')
+	mod1_ml$fit(sc, features, init=NULL)
+	display(mod1_ml)
 })
 
 # test: decision boundary
-set.seed(1718)
+set.seed(137)
 with(new.env(), {
 	# parameters
 	sampsize = 200
@@ -740,6 +817,19 @@ with(new.env(), {
 	# create carpbin tables
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
+	# stuff to display
+	display = function(mod) {
+		print(mod$loglikelihood())
+		print(lapply(mod$par_get()[-1], round, digits=3))
+		met = mod$calc_metrics(true_class_labels=y)
+		metric_shortnames = setNames(c('confmat', 'acc', 'sens', 
+		'spec', 'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 
+		'sensitivity', 'specificity', 'positive_predictive_value', 
+		'negative_predictive_value', 'flag_rate'))
+		names(met) = metric_shortnames[names(met)]
+		print(met$confmat)
+		print(round(unlist(met[-1]), 3))
+	}
 	# set true params AO1
 	mod1 = AO1Model$new(tables=cbtable)
 	mod1$data_set(success_counts=sc, features=features)
@@ -748,24 +838,9 @@ with(new.env(), {
 	mod0 = AO0Model$new(tables=cbtable)
 	mod0$data_set(success_counts=sc)
 	mod0$par_set(steepness=steepness, prevalence=mean(prevalence))
-	# shorten metrics names
-	metric_shortnames = setNames(c('confmat', 'acc', 'sens', 'spec', 
-	'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 'sensitivity', 
-	'specificity', 'positive_predictive_value', 
-	'negative_predictive_value', 'flag_rate'))
-	# calculate metrics AO1
-	message('AO1')
-	met1 = mod1$calc_metrics(true_class_labels=y)
-	names(met1) = metric_shortnames[names(met1)]
-	print(met1$confmat)
-	print(round(unlist(met1[-1]), 3))
-	# calculate metrics AO0
-	message('AO0')
-	met0 = mod0$calc_metrics(true_class_labels=y)
-	names(met0) = metric_shortnames[names(met0)]
-	print(met0$confmat)
-	print(round(unlist(met0[-1]), 3))
 	# draw decision boundary AO1
+	message('AO1')
+	display(mod1)
 	boundary_coords = mod1$coords_decibo()
 	correct1 = y==round(mod1$calc_postr_cnr())
 	plot(qlogis(prevalence), sc, pch=as.character(y), 
@@ -773,6 +848,8 @@ with(new.env(), {
 	ylab='success count')
 	lines(boundary_coords[['lincomb']], boundary_coords[['boundarycount']])
 	# draw decision boundary AO0
+	message('AO0')
+	display(mod0)
 	masspoints = 0:size
 	sc2postr = data.frame(sc=masspoints,
 	postr=mod0$calc_postr_cnr(success_counts=masspoints))
