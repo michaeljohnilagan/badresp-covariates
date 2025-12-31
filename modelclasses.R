@@ -459,7 +459,8 @@ private=list(
 		return(invisible(NULL))
 	},
 	# fitting via EM
-	fit_em = function(success_counts, features, maxit, init=NULL, tol=0.01) {
+	fit_em = function(success_counts, features, maxit, init=NULL, 
+	tol=0.01, verbose=FALSE) {
 		# initial values
 		if(is.null(init)) {
 			init_steepness = self$match_moments(
@@ -476,9 +477,8 @@ private=list(
 		old_ll = self$loglikelihood(steepness=old_pars[1], 
 		slopes=old_pars[-1], features=features, 
 		success_counts=success_counts)
-		if(TRUE) {
-			message(c('init | LL: ', 
-			round(old_ll, 3)))
+		if(verbose) {
+			message(c('init | LL: ', round(old_ll, 3)))
 		}
 		for(iter in 1:maxit) {
 			# from old params, calculate posterior
@@ -487,11 +487,11 @@ private=list(
 			steepness=old_pars[1], slopes=old_pars[-1])
 			# from posterior, estimate new steepness
 			weights_for_moment = (1-postr)/sum(1-postr)
-			if(all(weights_for_moment==0)|all(weights_for_moment==1)) {
+			if(all(weights_for_moment==0)) {
 				break
 			}
 			class0_mean = sum(weights_for_moment*success_counts)
-			if(class0_mean<0|is.na(class0_mean)) {
+			if(is.na(class0_mean)) {
 				break
 			}
 			new_steepness = private$tables$reverse_lookup_m(
@@ -499,25 +499,31 @@ private=list(
 			# from posterior, estimate new slopes
 			logits = qlogis(postr)
 			new_slopes = as.vector(projection_matrix%*%logits)
-			# report
+			# save new candidate
 			new_pars = c(new_steepness, new_slopes)
 			new_ll = self$loglikelihood(steepness=new_pars[1], 
 			slopes=new_pars[-1], features=features, 
 			success_counts=success_counts)
-			if(TRUE) {
+			if(verbose) {
 				message(c('iter ', iter, ' | LL: ', 
 				round(new_ll, 3), ' | mean postr: ', 
 				round(mean(postr), 3)))
 			}
-			# stopping criterion
-			if(new_ll<old_ll|is.na(new_ll)) {
-				message('worsened likelihood')
-				new_pars = old_pars
+			# convergence criterion
+			converged = sum(abs(new_pars-old_pars))<
+			(tol*length(new_pars))
+			if(converged) {
+				if(verbose) {
+					message('converged!')
+				}
 				break
 			}
-			converged = sum(abs(new_pars-old_pars))<(tol*length(new_pars))
-			if(converged) {
-				message('converged!')
+			# emergency exit if likelihood worsens
+			if(new_ll<old_ll|is.na(new_ll)) {
+				if(verbose) {
+					message('likelihood worsened')
+				}
+				new_pars = old_pars
 				break
 			}
 			# prepare next iteration
@@ -549,8 +555,8 @@ with(new.env(), {
 	baseline = calc_postr_cnr_ao0(masspoints, size=size, 
 	steepness=steepness, prevalence=prevalence)
 	efficient = mod$calc_postr_cnr(success_counts=masspoints, 
-	steepness=steepness, features=cbind(rep(1, length.out=length(masspoints))), 
-	slopes=rbind(qlogis(prevalence)))
+	steepness=steepness, features=cbind(rep(1, 
+	length.out=length(masspoints))), slopes=rbind(qlogis(prevalence)))
 	# compare
 	plot(baseline, efficient, main=Sys.time()); abline(0:1)
 	err = efficient-baseline
@@ -786,9 +792,8 @@ with(new.env(), {
 	# AO1 EM
 	message('EM')
 	mmest = mod0$par_get()
-	init = c(mmest$steepness, qlogis(mmest$prevalence), 
-	cor(sc, features[, -1]))
-	mod1_em$fit_em(sc, features, maxit=10, init=NULL)
+	mod1_em$fit_em(sc, features, maxit=10, init=NULL, tol=0.01, 
+	verbose=TRUE)
 	display(mod1_em)
 	# AO1 canned ML
 	message('ML')
