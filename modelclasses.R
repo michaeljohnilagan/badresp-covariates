@@ -427,14 +427,19 @@ with(new.env(), {
 	# fit
 	mod$fit(sc, features, init=NULL)
 	print(mod$par_get()[-1])
-	# predict
+	# shorten metrics names
+	metric_shortnames = setNames(c('confmat', 'acc', 'sens', 'spec', 
+	'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 'sensitivity', 
+	'specificity', 'positive_predictive_value', 
+	'negative_predictive_value', 'flag_rate'))
+	# calculate metrics
+	met = mod$calc_metrics(true_class_labels=y)
+	names(met) = metric_shortnames[names(met)]
+	print(met$confmat)
+	print(round(unlist(met[-1]), 3))
+	# boxplot
 	postr = mod$calc_postr_cnr()
 	boxplot(postr~y)
-	predbin = round(postr)
-	correct = predbin==y
-	acc = mean(correct)
-	print(acc)
-	print(table(predbin, y))
 })
 
 # model class AO0
@@ -661,28 +666,38 @@ with(new.env(), {
 	# create objects
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
-	mod = AO0Model$new(tables=cbtable)
+	mod_ml = AO0Model$new(tables=cbtable)
+	mod_mm = AO0Model$new(tables=cbtable)
 	print(c(steepness, prevalence))
+	# shorten metrics names
+	metric_shortnames = setNames(c('confmat', 'acc', 'sens', 'spec', 
+	'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 'sensitivity', 
+	'specificity', 'positive_predictive_value', 
+	'negative_predictive_value', 'flag_rate'))
 	# fit maximum likelihood
 	message('ML')
-	mod$fit(sc, init=c(-1, 0.3))
-	print(unlist(mod$par_get())[-1])
-	postr_ml = mod$calc_postr_cnr()
+	mod_ml$fit(sc, init=c(-1, 0.3))
+	print(round(unlist(mod_ml$par_get())[-1], 3))
+	postr_ml = mod_ml$calc_postr_cnr()
 	boxplot(postr_ml~y, main=Sys.time())
-	acc_ml = mean(round(postr_ml)==y)
-	print(acc_ml)
+	met_ml = mod_ml$calc_metrics(true_class_labels=y)
+	names(met_ml) = metric_shortnames[names(met_ml)]
+	print(met_ml$confmat)
+	print(round(unlist(met_ml[-1]), 3))
 	# fit method of moments
 	message('MM')
-	mod$fit_mm(sc)
-	print(unlist(mod$par_get())[-1])
-	postr_mm = mod$calc_postr_cnr()
+	mod_mm$fit_mm(sc)
+	print(round(unlist(mod_mm$par_get())[-1], 3))
+	postr_mm = mod_mm$calc_postr_cnr()
 	boxplot(postr_mm~y, main=Sys.time())
-	acc_mm = mean(round(postr_mm)==y)
-	print(acc_mm)
+	met_mm = mod_mm$calc_metrics(true_class_labels=y)
+	names(met_mm) = metric_shortnames[names(met_mm)]
+	print(met_mm$confmat)
+	print(round(unlist(met_mm[-1]), 3))
 })
 
 # test: decision boundary
-set.seed(2230)
+set.seed(1718)
 with(new.env(), {
 	# parameters
 	sampsize = 200
@@ -706,15 +721,27 @@ with(new.env(), {
 	mod1 = AO1Model$new(tables=cbtable)
 	mod1$data_set(success_counts=sc, features=features)
 	mod1$par_set(steepness=steepness, slopes=slopes)
+	# set true params AO0
+	mod0 = AO0Model$new(tables=cbtable)
+	mod0$data_set(success_counts=sc)
+	mod0$par_set(steepness=steepness, prevalence=mean(prevalence))
+	# shorten metrics names
+	metric_shortnames = setNames(c('confmat', 'acc', 'sens', 'spec', 
+	'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 'sensitivity', 
+	'specificity', 'positive_predictive_value', 
+	'negative_predictive_value', 'flag_rate'))
 	# calculate metrics AO1
 	message('AO1')
 	met1 = mod1$calc_metrics(true_class_labels=y)
-	metric_shortnames = data.frame(old=c('accuracy', 'sensitivity', 
-	'specificity', 'positive predictive value', 
-	'negative predictive value', 'flag rate'), new=c('acc', 'sens', 
-	'spec', 'ppv', 'npv', 'flagrate'))
-	print(met1$confusion)
-	print(unlist(setNames(met1[-1], metric_shortnames$new)))
+	names(met1) = metric_shortnames[names(met1)]
+	print(met1$confmat)
+	print(round(unlist(met1[-1]), 3))
+	# calculate metrics AO0
+	message('AO0')
+	met0 = mod0$calc_metrics(true_class_labels=y)
+	names(met0) = metric_shortnames[names(met0)]
+	print(met0$confmat)
+	print(round(unlist(met0[-1]), 3))
 	# draw decision boundary AO1
 	boundary_coords = mod1$coords_decibo()
 	correct1 = y==round(mod1$calc_postr_cnr())
@@ -722,20 +749,13 @@ with(new.env(), {
 	col=ifelse(correct1, 'green', 'red'), xlab='covariate', 
 	ylab='success count')
 	lines(boundary_coords[['lincomb']], boundary_coords[['boundarycount']])
-	# fit AO0
-	mod0 = AO0Model$new(tables=cbtable)
-	mod0$fit(sc, init=c(-1, 0.3))
-	# calculate metrics AO0
-	message('AO0')
-	met0 = mod0$calc_metrics(true_class_labels=y)
-	print(met0$confusion)
-	print(round(unlist(setNames(met0[-1], metric_shortnames$new)), 3))
 	# draw decision boundary AO0
 	masspoints = 0:size
 	sc2postr = data.frame(sc=masspoints,
 	postr=mod0$calc_postr_cnr(success_counts=masspoints))
 	sc_threshold = approx(x=sc2postr[['postr']], y=sc2postr[['sc']], 
 	xout=0.5)$y
+	correct0 = y==round(mod0$calc_postr_cnr())
 	abline(h=sc_threshold)
 })
 
