@@ -279,15 +279,23 @@ private=list(
 		return(pmf_mix)
 	},
 	# compute AO1 PMF
-	dao1 = function(success_counts, steepness, features, slopes) {
+	dao1 = function(success_counts, features, steepness, slopes) {
 		prevalences = self$calc_prev(features=features, slopes=slopes)
 		pmf_mix = self$dao0(success_counts=success_counts, 
 		steepness=steepness, prevalences=prevalences)
 		return(pmf_mix)
 	},
+	# compute likelihood
+	loglikelihood = function(steepness=private$steepness, 
+	slopes=private$slopes, features=private$features, 
+	success_counts=private$success_counts) {
+		lik = self$dao1(success_counts=success_counts, features=features,
+		steepness=steepness, slopes=slopes)
+		return(sum(log(lik)))
+	},
 	# compute posterior probability of CNR
-	calc_postr_cnr = function(success_counts=private$success_counts, 
-	steepness=private$steepness, features=private$features, 
+	calc_postr_cnr_ao1 = function(success_counts=private$success_counts, 
+	features=private$features, steepness=private$steepness, 
 	slopes=private$slopes) {
 		# compute class 1 (CNR) prior
 		prevalence = self$calc_prev(features=features, slopes=slopes)
@@ -303,13 +311,20 @@ private=list(
 		postr = postr_numerator/postr_denominator
 		return(postr)
 	},
+	# compute posterior probability of CNR (again)
+	calc_postr_cnr = function(success_counts=private$success_counts, 
+	features=private$features, steepness=private$steepness, 
+	slopes=private$slopes) {
+		self$calc_postr_cnr_ao1(success_counts=success_counts, 
+		features=features, steepness=steepness, slopes=slopes)
+	},
 	# calculate bayes classifier metrics
-	calc_metrics = function(true_class_labels, 
+	calc_metrics_ao1 = function(true_class_labels, 
 	success_counts=private$success_counts, steepness=private$steepness, 
 	features=private$features, slopes=private$slopes) {
 		# get predicted labels
-		class1prob = self$calc_postr_cnr(success_counts=success_counts,
-		steepness=steepness, features=features, slopes=slopes)
+		class1prob = self$calc_postr_cnr_ao1(success_counts=success_counts,
+		features=features, steepness=steepness, slopes=slopes)
 		predicted_class_labels = round(class1prob)
 		# metrics
 		confmat = table(pred=predicted_class_labels, 
@@ -326,6 +341,14 @@ private=list(
 		positive_predictive_value=ppv, negative_predictive_value=npv,
 		flag_rate=flagrate)
 		return(metrics)
+	},
+	# calculate bayes classifier metrics (again)
+	calc_metrics = function(true_class_labels, 
+	success_counts=private$success_counts, steepness=private$steepness, 
+	features=private$features, slopes=private$slopes) {
+		self$calc_metrics_ao1(true_class_labels=true_class_labels, 
+		success_counts=success_counts, steepness=steepness, 
+		features=features, slopes=slopes)
 	},
 	# coordinates for decision boundary
 	coords_decibo = function(success_counts=private$success_counts,
@@ -413,10 +436,11 @@ private=list(
 	fit = function(success_counts, features, init=NULL) {
 		# define objective as negative log likelihood
 		negloglik = function(u) {
-			lik = self$dao1(success_counts=success_counts, 
-			steepness=u[1], features=as.matrix(features), 
+			loglik = self$loglikelihood(
+			success_counts=success_counts, 
+			features=as.matrix(features), steepness=u[1], 
 			slopes=u[-1])
-			-1*sum(log(lik))
+			-1*loglik
 		}
 		# optimize
 		shift_limit = private$tables$par()$shift_limit
@@ -535,44 +559,31 @@ public=list(
 		private$success_counts = success_counts
 		return(invisible(NULL))
 	},
+	# compute likelihood
+	loglikelihood = function(steepness=private$steepness, 
+	prevalence=plogis(private$slopes), 
+	success_counts=private$success_counts) {
+		lik = self$dao0(success_counts=success_counts, steepness=steepness, 
+		prevalences=prevalence)
+		return(sum(log(lik)))
+	},
 	# compute posterior probability of CNR
 	calc_postr_cnr = function(success_counts=private$success_counts, 
 	steepness=private$steepness, prevalence=plogis(private$slopes)) {
-		# compute likelihood by class
-		likelihood_class0 = private$tables$dcarpbin(shifts=steepness, 
-		success_counts=success_counts)
-		likelihood_class1 = private$tables$dcarpbin(shifts=0, 
-		success_counts=success_counts)
-		# numerator and denominator of posterior
-		postr_numerator = prevalence*likelihood_class1
-		postr_denominator = postr_numerator+(1-prevalence)*
-		likelihood_class0
-		postr = postr_numerator/postr_denominator
-		return(postr)
+		features = cbind(rep(1, times=length(success_counts)))
+		slopes = qlogis(prevalence)
+		self$calc_postr_cnr_ao1(success_counts=success_counts, features=features, 
+		steepness=steepness, slopes=slopes)
 	},
 	# calculate bayes classifier metrics
 	calc_metrics = function(true_class_labels, 
 	success_counts=private$success_counts, steepness=private$steepness, 
 	prevalence=plogis(private$slopes)) {
-		# get predicted labels
-		class1prob = self$calc_postr_cnr(success_counts=success_counts,
-		steepness=steepness, prevalence=prevalence)
-		predicted_class_labels = round(class1prob)
-		# metrics
-		confmat = table(pred=predicted_class_labels, 
-		true=true_class_labels)
-		acc = mean(true_class_labels==predicted_class_labels)
-		sens = mean(predicted_class_labels[true_class_labels==1]==1)
-		spec = mean(predicted_class_labels[true_class_labels==0]==0)
-		ppv = mean(true_class_labels[predicted_class_labels==1]==1)
-		npv = mean(true_class_labels[predicted_class_labels==0]==0)
-		flagrate = mean(predicted_class_labels==1)
-		# put together
-		metrics = list(confusion=confmat, accuracy=acc, 
-		sensitivity=sens, specificity=spec, 
-		positive_predictive_value=ppv, negative_predictive_value=npv,
-		flag_rate=flagrate)
-		return(metrics)
+		features = cbind(rep(1, times=length(success_counts)))
+		slopes = qlogis(prevalence)
+		self$calc_metrics_ao1(true_class_labels=true_class_labels, 
+		success_counts=success_counts, features=features, 
+		steepness=steepness, slopes=slopes)
 	},
 	# fitting via method of moments
 	fit_mm = function(success_counts) {
@@ -687,6 +698,7 @@ with(new.env(), {
 	# fit maximum likelihood
 	message('ML')
 	mod_ml$fit(sc, init=c(-1, 0.3))
+	print(mod_ml$loglikelihood())
 	print(round(unlist(mod_ml$par_get())[-1], 3))
 	postr_ml = mod_ml$calc_postr_cnr()
 	boxplot(postr_ml~y, main=Sys.time())
@@ -697,6 +709,7 @@ with(new.env(), {
 	# fit method of moments
 	message('MM')
 	mod_mm$fit_mm(sc)
+	print(mod_mm$loglikelihood())
 	print(round(unlist(mod_mm$par_get())[-1], 3))
 	postr_mm = mod_mm$calc_postr_cnr()
 	boxplot(postr_mm~y, main=Sys.time())
