@@ -612,6 +612,15 @@ public=list(
 		self$calc_postr_cnr_ao1(success_counts=success_counts, features=features, 
 		steepness=steepness, slopes=slopes)
 	},
+	# get AO0 decision boundary
+	threshold_ao0 = function(steepness=private$steepness, 
+	prevalence=plogis(private$slopes)) {
+		masspoints = 0:private$size
+		postr = self$calc_postr_cnr(success_counts=masspoints, 
+		steepness=steepness, prevalence=prevalence)
+		threshold = approx(x=postr, y=masspoints, xout=0.5)$y
+		return(threshold)
+	},
 	# calculate bayes classifier metrics
 	calc_metrics = function(true_class_labels, 
 	success_counts=private$success_counts, steepness=private$steepness, 
@@ -855,11 +864,7 @@ with(new.env(), {
 	# draw decision boundary AO0
 	message('AO0')
 	display(mod0)
-	masspoints = 0:size
-	sc2postr = data.frame(sc=masspoints,
-	postr=mod0$calc_postr_cnr(success_counts=masspoints))
-	sc_threshold = approx(x=sc2postr[['postr']], y=sc2postr[['sc']], 
-	xout=0.5)$y
+	sc_threshold = mod0$threshold_ao0()
 	correct0 = y==round(mod0$calc_postr_cnr())
 	abline(h=sc_threshold)
 })
