@@ -360,7 +360,7 @@ private=list(
 		return(matched)
 	},
 	# fitting via method of moments
-	fit_mm = function(success_counts) {
+	match_moments = function(success_counts) {
 		# get empirical moments from data
 		emp_mean = mean(success_counts)
 		emp_var = var(success_counts)
@@ -402,13 +402,12 @@ private=list(
 		# optimization
 		fitted_steepness = optimize(f=lossfun, lower=steepness_left, 
 		upper=steepness_right)$minimum
-		fitted_prevalence = self$match_implied_params(fitted_steepness, 
-		mix_mean=emp_mean)[['prevalence']]
-		# assign result to object
-		private$steepness = fitted_steepness
-		private$slopes = qlogis(fitted_prevalence)
-		self$data_set(success_counts=success_counts)
-		return(invisible(NULL))
+		fitted_prevalence = self$match_implied_params(
+		fitted_steepness, mix_mean=emp_mean)[['prevalence']]
+		# return result
+		fitted = list(steepness=fitted_steepness, 
+		prevalence=fitted_prevalence)
+		return(fitted)
 	},
 	# fitting via maximum likelihood
 	fit = function(success_counts, features, init=NULL) {
@@ -574,6 +573,16 @@ public=list(
 		positive_predictive_value=ppv, negative_predictive_value=npv,
 		flag_rate=flagrate)
 		return(metrics)
+	},
+	# fitting via method of moments
+	fit_mm = function(success_counts) {
+		# optimize
+		fitted_mm = self$match_moments(success_counts)
+		# assign result to object
+		self$par_set(steepness=fitted_mm$steepness, 
+		prevalence=fitted_mm$prevalence)
+		self$data_set(success_counts=success_counts)
+		return(invisible(NULL))
 	},
 	# fitting via maximum likelihood
 	fit = function(success_counts, init=NULL) {
