@@ -235,7 +235,7 @@ pval2count = function(pval, size, tolerance=1e-5) {
 		warning(c('rounding error up to ', 
 		rounding_error))
 	}
-	return(success_count)
+	return(round(success_count))
 }
 
 # fit method of moments
