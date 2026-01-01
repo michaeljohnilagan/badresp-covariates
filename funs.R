@@ -228,8 +228,13 @@ with(new.env(), {
 })
 
 # convert p value to success count
-pval2count = function(pval, size) {
+pval2count = function(pval, size, tolerance=1e-5) {
 	success_count = pval*(size+1)-1
+	rounding_error = round(success_count)-success_count
+	if(max(abs(rounding_error))>tolerance) {
+		warning(c('rounding error up to ', 
+		rounding_error))
+	}
 	return(success_count)
 }
 
