@@ -264,7 +264,7 @@ private=list(
 	},
 	# compute prevalences
 	calc_prev = function(features, slopes) {
-		prevalences = plogis(features%*%slopes)
+		prevalences = as.vector(plogis(features%*%slopes))
 		return(prevalences)
 	},
 	# compute AO0 PMF
@@ -357,7 +357,7 @@ private=list(
 		# get all mass points
 		masspoints = 0:private$size
 		# compute the linear combination values
-		lin_comb = as.matrix(features)%*%slopes
+		lin_comb = as.vector(as.matrix(features)%*%slopes)
 		# for each linear combination value, get the boundary count
 		boundary_count = sapply(lin_comb, function(u) {
 			postr = self$calc_postr_cnr(
@@ -771,7 +771,7 @@ with(new.env(), {
 	shift_limit = -5
 	num_gridpoints = 300
 	# generate
-	prevalence = plogis(features%*%slopes)
+	prevalence = as.vector(plogis(features%*%slopes))
 	y = rbinom(length(prevalence), size=1, prob=prevalence)
 	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
 	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
@@ -822,7 +822,7 @@ with(new.env(), {
 	shift_limit = -5
 	num_gridpoints = 300
 	# generate
-	prevalence = plogis(features%*%slopes)
+	prevalence = as.vector(plogis(features%*%slopes))
 	y = rbinom(length(prevalence), size=1, prob=prevalence)
 	print(table(y))
 	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
