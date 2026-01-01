@@ -1,4 +1,4 @@
-source('funs.R')
+source('funs.R', local=TRUE)
 
 # efficient table lookup class
 CarpBinTable = R6::R6Class('CarpBinTable', 
