@@ -396,14 +396,12 @@ private=list(
 		lowest_mean = private$tables$lookup_m(shift_limit)
 		# emergency exit for extreme empirical mean
 		if(emp_mean>flat_mean) {
-			self$par_set(steepness=0, prevalence=1)
-			self$data_set(success_counts=success_counts)
-			return(invisible(NULL))
+			fitted = list(steepness=0, prevalence=1)
+			return(fitted)
 		} # too high
 		if(emp_mean<lowest_mean) {
-			self$par_set(steepness=shift_limit, prevalence=0)
-			self$data_set(success_counts=success_counts)
-			return(invisible(NULL))
+			fitted = list(steepness=shift_limit, prevalence=0)
+			return(fitted)
 		} # too low
 		# set range for steepness
 		steepness_left = shift_limit
@@ -464,7 +462,7 @@ private=list(
 		# initial values
 		if(is.null(init)) {
 			init_steepness = self$match_moments(
-			success_counts=success_counts)$steepness
+			success_counts)$steepness
 			init_slopes = suppressWarnings(cor(success_counts, features))
 			init_slopes = ifelse(is.na(init_slopes), 0, init_slopes)
 			init = c(init_steepness, init_slopes)
@@ -472,66 +470,76 @@ private=list(
 		# projection matrix for least squares
 		features = as.matrix(features)
 		projection_matrix = solve(t(features)%*%features)%*%t(features)
-		# main loop
-		old_pars = init
-		old_ll = self$loglikelihood(steepness=old_pars[1], 
-		slopes=old_pars[-1], features=features, 
+		# start off with initial values
+		estimate = init
+		ll = self$loglikelihood(steepness=estimate[1], 
+		slopes=estimate[-1], features=features, 
 		success_counts=success_counts)
 		if(verbose) {
-			message(c('init | LL: ', round(old_ll, 3)))
+			message(c('init | LL: ', round(ll, 3)))
 		}
+		# main loop
 		for(iter in 1:maxit) {
 			# from old params, calculate posterior
 			postr = self$calc_postr_cnr(
 			success_counts=success_counts, features=features, 
-			steepness=old_pars[1], slopes=old_pars[-1])
+			steepness=estimate[1], slopes=estimate[-1])
 			# from posterior, estimate new steepness
 			weights_for_moment = (1-postr)/sum(1-postr)
-			if(all(weights_for_moment==0)) {
-				break
-			}
 			class0_mean = sum(weights_for_moment*success_counts)
-			if(is.na(class0_mean)) {
-				break
-			}
 			new_steepness = private$tables$reverse_lookup_m(
 			class0_mean)
+			# emergency exit if NA steepness
+			if(is.na(new_steepness)) {
+				warning('arrived at bad steepness')
+				break
+			}
 			# from posterior, estimate new slopes
 			logits = qlogis(postr)
 			new_slopes = as.vector(projection_matrix%*%logits)
+			# emergency exit if NA steepness
+			if(any(is.na(new_slopes))|any(!is.finite(new_slopes))) {
+				warning('arrived at bad slopes')
+				break
+			}
 			# save new candidate
-			new_pars = c(new_steepness, new_slopes)
-			new_ll = self$loglikelihood(steepness=new_pars[1], 
-			slopes=new_pars[-1], features=features, 
+			new_estimate = c(new_steepness, new_slopes)
+			new_ll = self$loglikelihood(steepness=new_estimate[1], 
+			slopes=new_estimate[-1], features=features, 
 			success_counts=success_counts)
 			if(verbose) {
 				message(c('iter ', iter, ' | LL: ', 
 				round(new_ll, 3), ' | mean postr: ', 
 				round(mean(postr), 3)))
 			}
+			# emergency exit if likelihood worsens
+			if(is.na(new_ll)) {
+				print(postr, digits=4)
+				print(new_estimate, digits=4)
+			} # print to debug
+			if(new_ll<ll) {	
+				if(verbose) {
+					message('likelihood worsened')
+				}
+				break
+			}
 			# convergence criterion
-			converged = sum(abs(new_pars-old_pars))<
-			(tol*length(new_pars))
+			converged = sum(abs(new_estimate-estimate))<
+			(tol*length(estimate))
 			if(converged) {
+				estimate = new_estimate
+				ll = new_ll
 				if(verbose) {
 					message('converged!')
 				}
 				break
 			}
-			# emergency exit if likelihood worsens
-			if(new_ll<old_ll|is.na(new_ll)) {
-				if(verbose) {
-					message('likelihood worsened')
-				}
-				new_pars = old_pars
-				break
-			}
 			# prepare next iteration
-			old_pars = new_pars
-			old_ll = new_ll
+			estimate = new_estimate
+			ll = new_ll
 		}
 		# assign result to object
-		self$par_set(steepness=new_pars[1], slopes=new_pars[-1])
+		self$par_set(steepness=estimate[1], slopes=estimate[-1])
 		self$data_set(success_counts=success_counts, features=features)
 		return(invisible(NULL))
 	}
