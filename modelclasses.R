@@ -1,4 +1,49 @@
-source('funs.R', local=TRUE)
+# generate from carpal distribution
+rcarpal = function(n, shift) {
+	z = rnorm(n)
+	success_rate = pnorm(z+shift)
+	return(success_rate)
+}
+
+# carpal density
+dcarpal = function(x, shift) {
+	in_range = 0<=x&x<=1
+	density_in_range = dnorm(qnorm(x)-shift)/dnorm(qnorm(x))
+	return(ifelse(in_range, density_in_range, 0))
+}
+
+
+# generate from carpal binomial hierarchy
+rcarpbin = function(n, size, shift) {
+	success_rate = rcarpal(n, shift=shift)
+	success_count = rbinom(n, size=size, prob=success_rate)
+	return(success_count)
+}
+
+# carpal binomial hierarchy PMF
+dcarpbin = function(x, size, shift) {
+	# function for single inputs
+	f = function(x, size, shift) {
+		fun_to_integrate = function(u) {
+			#dbinom(x, size=size, prob=u)*dcarpal(u, shift=shift)
+			dbinom(x, size=size, prob=pnorm(u))*dnorm(u, mean=shift)
+		}
+		integrate(fun_to_integrate, lower=-Inf, upper=+Inf)$value
+	}
+	# apply for multiple inputs
+	return(mapply(f, x=x, size=size, shift=shift))
+}
+
+# convert p value to success count
+pval2count = function(pval, size, tolerance=1e-5) {
+	success_count = pval*(size+1)-1
+	rounding_error = round(success_count)-success_count
+	if(max(abs(rounding_error))>tolerance) {
+		warning(c('rounding error up to ', 
+		rounding_error))
+	}
+	return(round(success_count))
+}
 
 # efficient table lookup class
 CarpBinTable = R6::R6Class('CarpBinTable', 
@@ -93,121 +138,6 @@ private=list(
 	}
 ))
 
-# small test on CarpBinTable
-with(new.env(), {
-	# params
-	size = 15
-	shift_limit = -5
-	num_gridpoints = 30
-	# implied params
-	masspoints = 0:size
-	shifts = seq(from=shift_limit, to=0, length.out=num_gridpoints)
-	# construct table
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	# vector of errors
-	testpoints = -3.12
-	pmf_efficient = as.vector(sapply(testpoints, function(s) {
-		cbtable$dcarpbin(shift=s, success_counts=masspoints)
-	}))
-	pmf_baseline = as.vector(sapply(testpoints, function(s) {
-		dcarpbin(masspoints, size=size, shift=s)
-	}))
-	plot(pmf_efficient, pmf_baseline, main=Sys.time()); abline(0:1)
-	round(pmf_efficient-pmf_baseline, 4)
-})
-
-# big test on shifts not in table
-Sys.time(); with(new.env(), {
-	# params
-	size = 200
-	shift_limit = -10
-	num_gridpoints = 200
-	# implied params
-	masspoints = 0:size
-	shifts = seq(from=shift_limit, to=0, length.out=num_gridpoints)
-	# construct table
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	# matrix of errors
-	testpoints = (shifts[-1]+
-	(shifts[-length(shifts)]))/2 # in between gridpoints!
-	tab_efficient = as.vector(sapply(testpoints, function(s) {
-		cbtable$dcarpbin(shift=s, success_counts=masspoints)
-	}))
-	tab_baseline = sapply(testpoints, function(s) {
-		dcarpbin(masspoints, size=size, shift=s)
-	})
-	tab_diff = tab_efficient-tab_baseline
-	# display result
-	if(FALSE) {
-		rownames(tab_diff) = masspoints
-		colnames(tab_diff) = round(testpoints, 5)
-		image(x=rownames(tab_diff), y=colnames(tab_diff), z=tab_diff, 
-		main=Sys.time())
-	}
-	round(quantile(abs(tab_diff)), 3)
-}); Sys.time()
-
-# test lookup mean in CarpBinTable
-with(new.env(), {
-	# params
-	size = 200
-	shift_limit = -1
-	num_gridpoints = 300
-	# implied params
-	masspoints = 0:size
-	shifts = seq(from=shift_limit, to=0, length.out=num_gridpoints)
-	# construct table
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	testpoints = (shifts[-1]+
-	(shifts[-length(shifts)]))/2 # in between gridpoints!
-	# test 1
-	baseline = sapply(testpoints, function(s) {
-		expect_ao0(size=size, steepness=s, prevalence=0)
-	})
-	efficient = cbtable$lookup_m(testpoints)
-	plot(testpoints, baseline, lwd=3, col='blue', ylab='mean', 
-	main=Sys.time())
-	lines(testpoints, efficient, lwd=3, col='red')
-	err1 = baseline-efficient
-	print(quantile(round(abs(err1), 3)))
-	# test 2
-	testpoints_again = cbtable$reverse_lookup_m(efficient)
-	err2 = testpoints-testpoints_again
-	print(quantile(round(abs(err2), 3)))
-})
-
-# test lookup variance in CarpBinTable
-with(new.env(), {
-	# params
-	size = 200
-	shift_limit = -1
-	num_gridpoints = 300
-	# implied params
-	masspoints = 0:size
-	shifts = seq(from=shift_limit, to=0, length.out=num_gridpoints)
-	# construct table
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	testpoints = (shifts[-1]+
-	(shifts[-length(shifts)]))/2 # in between gridpoints!
-	# test 1
-	baseline = sapply(testpoints, function(s) {
-		var_ao0(size=size, steepness=s, prevalence=0)
-	})
-	efficient = cbtable$lookup_v(testpoints)
-	plot(testpoints, sqrt(baseline), lwd=3, col='blue', ylab='stdev', 
-	main=Sys.time())
-	lines(testpoints, sqrt(efficient), lwd=3, col='red')
-	err1 = sqrt(baseline)-sqrt(efficient)
-	print(quantile(round(abs(err1), 3)))
-	# test 2
-	testpoints_again = cbtable$reverse_lookup_v(efficient)
-	err2 = testpoints-testpoints_again
-	print(quantile(round(abs(err2), 3)))
-})
 
 # model class AO1
 AO1Model = R6::R6Class('AO1Model', 
@@ -544,32 +474,6 @@ private=list(
 	}
 ))
 
-# test: AO1 posterior calculation
-with(new.env(), {
-	# parameters
-	size = 200
-	steepness = -1.411
-	prevalence = 0.11
-	shift_limit = -10
-	num_gridpoints = 200
-	# create objects
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	mod = AO1Model$new(table=cbtable)
-	print(class(mod))
-	# calculate probabilities
-	masspoints = 0:size
-	baseline = calc_postr_cnr_ao0(masspoints, size=size, 
-	steepness=steepness, prevalence=prevalence)
-	efficient = mod$calc_postr_cnr(success_counts=masspoints, 
-	steepness=steepness, features=cbind(rep(1, 
-	length.out=length(masspoints))), slopes=rbind(qlogis(prevalence)))
-	# compare
-	plot(baseline, efficient, main=Sys.time()); abline(0:1)
-	err = efficient-baseline
-	quantile(round(abs(err), 3))
-})
-
 # model class AO0
 AO0Model = R6::R6Class('AO0Model', 
 inherit=AO1Model,
@@ -672,207 +576,4 @@ public=list(
 		return(invisible(NULL))
 	}
 ))
-
-# test: AO0 posterior calculation
-with(new.env(), {
-	# parameters
-	size = 200
-	steepness = -1.411
-	prevalence = 0.11
-	shift_limit = -10
-	num_gridpoints = 200
-	# create objects
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	mod = AO0Model$new(table=cbtable)
-	# calculate probabilities
-	masspoints = 0:size
-	baseline = calc_postr_cnr_ao0(masspoints, size=size, 
-	steepness=steepness, prevalence=prevalence)
-	mod$par_set(steepness=steepness, prevalence=prevalence)
-	efficient = mod$calc_postr_cnr(success_counts=masspoints)
-	# compare
-	plot(baseline, efficient, main=Sys.time()); abline(0:1)
-	err = efficient-baseline
-	quantile(round(abs(err), 3))
-})
-
-# test: AO0 PMF calculation
-with(new.env(), {
-	# parameters
-	size = 200
-	steepness = -3.11
-	prevalence = 0.21
-	shift_limit = -10
-	num_gridpoints = 200
-	# create objects
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	mod = AO0Model$new(tables=cbtable)
-	# calculate probabilities
-	masspoints = 0:size
-	baseline = dao0(masspoints, size=size, steepness=steepness, 
-	prevalence=prevalence)
-	efficient = mod$dao0(masspoints, steepness=steepness, 
-	prevalence=prevalence)
-	# compare
-	plot(efficient, baseline, main=Sys.time()); abline(0:1)
-	err = efficient-baseline
-	quantile(round(abs(err), 3))
-})
-
-# test: AO0 fitting
-set.seed(226)
-with(new.env(), {
-	# parameters
-	sampsize = 100
-	size = 200
-	steepness = -2.14
-	prevalence = 0.4
-	shift_limit = -5
-	num_gridpoints = 300
-	# generate
-	y = sample(0:1, size=sampsize, prob=c(1-prevalence, prevalence), 
-	replace=TRUE)
-	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
-	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
-	sc = ifelse(y==1, sc_class1, sc_class0)
-	# create objects
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	mod_ml = AO0Model$new(tables=cbtable)
-	mod_mm = AO0Model$new(tables=cbtable)	
-	# stuff to display
-	display = function(mod) {
-		print(mod$loglikelihood())
-		print(lapply(mod$par_get()[-1], round, digits=3))
-		met = mod$calc_metrics(true_class_labels=y)
-		metric_shortnames = setNames(c('confmat', 'acc', 'sens', 
-		'spec', 'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 
-		'sensitivity', 'specificity', 'positive_predictive_value', 
-		'negative_predictive_value', 'flag_rate'))
-		names(met) = metric_shortnames[names(met)]
-		print(round(unlist(met[-1]), 3))
-	}
-	# fit maximum likelihood
-	message('ML')
-	mod_ml$fit(sc, init=c(-1, 0.3))
-	display(mod_ml)
-	# fit method of moments
-	message('MM')
-	mod_mm$fit_mm(sc)
-	display(mod_mm)
-})
-
-# test: AO1 fitting
-set.seed(221)
-with(new.env(), {
-	# parameters
-	sampsize = 150
-	size = 200
-	steepness = -1.21
-	slopes = c(-0.5*1, c(1, -1, +2, -2))
-	features = cbind(1, replicate(length(slopes)-1, {
-		runif(sampsize, -1, +1)
-	}))
-	shift_limit = -5
-	num_gridpoints = 300
-	# generate
-	prevalence = as.vector(plogis(features%*%slopes))
-	y = rbinom(length(prevalence), size=1, prob=prevalence)
-	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
-	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
-	sc = ifelse(y==1, sc_class1, sc_class0)
-	# create objects
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	mod1_ml = AO1Model$new(tables=cbtable)
-	mod1_em = AO1Model$new(tables=cbtable)
-	mod0 = AO0Model$new(tables=cbtable)
-	# stuff to display
-	display = function(mod) {
-		print(mod$loglikelihood())
-		print(lapply(mod$par_get()[-1], round, digits=3))
-		met = mod$calc_metrics(true_class_labels=y)
-		metric_shortnames = setNames(c('confmat', 'acc', 'sens', 
-		'spec', 'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 
-		'sensitivity', 'specificity', 'positive_predictive_value', 
-		'negative_predictive_value', 'flag_rate'))
-		names(met) = metric_shortnames[names(met)]
-		print(round(unlist(met[-1]), 3))
-	}
-	# AO0 MM
-	message('AO0-MM')
-	mod0$fit_mm(sc)
-	display(mod0)
-	# AO1 EM
-	message('EM')
-	mmest = mod0$par_get()
-	mod1_em$fit_em(sc, features, maxit=10, init=NULL, tol=0.01, 
-	verbose=TRUE)
-	display(mod1_em)
-	# AO1 canned ML
-	message('ML')
-	mod1_ml$fit(sc, features, init=NULL)
-	display(mod1_ml)
-})
-
-# test: decision boundary
-set.seed(137)
-with(new.env(), {
-	# parameters
-	sampsize = 200
-	size = 200
-	steepness = -0.81
-	features = cbind(1, runif(sampsize, -1, +1))
-	slopes = c(-1, 2)
-	shift_limit = -5
-	num_gridpoints = 300
-	# generate
-	prevalence = as.vector(plogis(features%*%slopes))
-	y = rbinom(length(prevalence), size=1, prob=prevalence)
-	print(table(y))
-	sc_class0 = rcarpbin(sampsize, size=size, shift=steepness)
-	sc_class1 = rcarpbin(sampsize, size=size, shift=0)
-	sc = ifelse(y==1, sc_class1, sc_class0)
-	# create carpbin tables
-	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
-	num_gridpoints=num_gridpoints)
-	# stuff to display
-	display = function(mod) {
-		print(mod$loglikelihood())
-		print(lapply(mod$par_get()[-1], round, digits=3))
-		met = mod$calc_metrics(true_class_labels=y)
-		metric_shortnames = setNames(c('confmat', 'acc', 'sens', 
-		'spec', 'ppv', 'npv', 'flagrate'), c('confusion', 'accuracy', 
-		'sensitivity', 'specificity', 'positive_predictive_value', 
-		'negative_predictive_value', 'flag_rate'))
-		names(met) = metric_shortnames[names(met)]
-		print(met$confmat)
-		print(round(unlist(met[-1]), 3))
-	}
-	# set true params AO1
-	mod1 = AO1Model$new(tables=cbtable)
-	mod1$data_set(success_counts=sc, features=features)
-	mod1$par_set(steepness=steepness, slopes=slopes)
-	# set true params AO0
-	mod0 = AO0Model$new(tables=cbtable)
-	mod0$data_set(success_counts=sc)
-	mod0$par_set(steepness=steepness, prevalence=mean(prevalence))
-	# draw decision boundary AO1
-	message('AO1')
-	display(mod1)
-	boundary_coords = mod1$coords_decibo()
-	correct1 = y==round(mod1$calc_postr_cnr())
-	plot(qlogis(prevalence), sc, pch=as.character(y), 
-	col=ifelse(correct1, 'green', 'red'), xlab='covariate', 
-	ylab='success count')
-	lines(boundary_coords[['lincomb']], boundary_coords[['boundarycount']])
-	# draw decision boundary AO0
-	message('AO0')
-	display(mod0)
-	sc_threshold = mod0$threshold_ao0()
-	correct0 = y==round(mod0$calc_postr_cnr())
-	abline(h=sc_threshold)
-})
 
