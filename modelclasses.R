@@ -12,7 +12,6 @@ dcarpal = function(x, shift) {
 	return(ifelse(in_range, density_in_range, 0))
 }
 
-
 # generate from carpal binomial hierarchy
 rcarpbin = function(n, size, shift) {
 	success_rate = rcarpal(n, shift=shift)
@@ -32,17 +31,6 @@ dcarpbin = function(x, size, shift) {
 	}
 	# apply for multiple inputs
 	return(mapply(f, x=x, size=size, shift=shift))
-}
-
-# convert p value to success count
-pval2count = function(pval, size, tolerance=1e-5) {
-	success_count = pval*(size+1)-1
-	rounding_error = round(success_count)-success_count
-	if(max(abs(rounding_error))>tolerance) {
-		warning(c('rounding error up to ', 
-		rounding_error))
-	}
-	return(round(success_count))
 }
 
 # efficient table lookup class
@@ -137,7 +125,6 @@ private=list(
 		y=private$table_mv[['shift']], xout=var)$y
 	}
 ))
-
 
 # model class AO1
 AO1Model = R6::R6Class('AO1Model', 

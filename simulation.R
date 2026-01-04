@@ -7,6 +7,7 @@ library('detranli')
 Sys.time(); ao = new.env()
 with(ao, {
 	source('modelclasses.R', local=TRUE)
+	source('classification.R', local=TRUE)
 }); Sys.time()
 
 # initialize objects
@@ -236,8 +237,8 @@ run_repl = function(n, contam, xsep, zwhich, verbose=FALSE) {
 	pred_class_lab_ao1 = round(mod1$calc_postr_cnr())
 	# get metrics
 	metrics = function(predicted_class_label) {
-		detranli::metrics(y=dat$y, 
-		yhat=predicted_class_label)$outcomemeasures
+		ao$metrics(true_class_label=dat$y, 
+		predicted_class_label=predicted_class_label)
 	}
 	met = lapply(list(met_sc=pred_class_lab_sc, 
 	met_ao0=pred_class_lab_ao0, met_ao1=pred_class_lab_ao1), metrics)
