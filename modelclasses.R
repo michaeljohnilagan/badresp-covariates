@@ -44,7 +44,6 @@ private=list(
 	# compute dcarpbin for one shift value
 	dcarpbin_sameshift = function(shift, success_counts) {
 		# assert
-		stopifnot(shift<=0)
 		stopifnot(length(shift)==1)
 		# look up
 		shift_idx = min(which(shift<=private$shifts))
