@@ -37,8 +37,7 @@ colnames_list = list(id='token', pointscale='responseScale', y='stimuli',
 z=colnames(env_raw$dat_z)[grepl('_code', colnames(env_raw$dat_z))],
 x=c('sumScreenTimeLog', 'engagementScore', 'attentivenessScore', 
 'log_dX_relAll', 'sqrt_flipsXAll', 'log_dY_relAll', 'sqrt_flipsYAll', 
-'log_vXAll', 'log_vYAll', 'log_aXAll', 'log_aYAll'),
-x_from_z=c('longstringAll', 'mahalanobisAll'))
+'log_vXAll', 'log_vYAll', 'log_aXAll', 'log_aYAll'))
 colnames_list
 
 # join data frames
