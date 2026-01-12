@@ -96,19 +96,17 @@ lapply(df_by_pointscale, function(df) {
 })
 
 # for 11-point scale, make it from 1 to 11
-if(FALSE) {
-	df_by_pointscale$ps11 = (function(df) {
-		incremented = lapply(colnames(df), function(nm) {
-			if(nm %in% colnames_list$z) {
-				df[[nm]]+1
-			} else {
-				df[[nm]]
-			} # if likert column, add 1
-		})
-		as.data.frame(setNames(incremented, colnames(df)))
-	})(df_by_pointscale$ps11)
-	t(sapply(df_by_pointscale$ps11[, colnames_list$z], table))
-} # this is unnecessary, won't affect L1P1
+df_by_pointscale$ps11 = (function(df) {
+	incremented = lapply(colnames(df), function(nm) {
+		if(nm %in% colnames_list$z) {
+			df[[nm]]+1
+		} else {
+			df[[nm]]
+		} # if likert column, add 1
+	})
+	as.data.frame(setNames(incremented, colnames(df)))
+})(df_by_pointscale$ps11)
+t(sapply(df_by_pointscale$ps11[, colnames_list$z], table))
 
 # per split, create list of xyz triple
 processed_data = lapply(df_by_pointscale, function(df) {
@@ -122,3 +120,4 @@ t(sapply(processed_data, names))
 Sys.time()
 saveRDS(processed_data, 'analysis-preprocess.RDS')
 devtools::session_info()
+
