@@ -6,8 +6,8 @@ library('detranli')
 # import my stuff
 Sys.time(); ao = new.env()
 with(ao, {
-	source('modelclasses.R', local=TRUE)
-	source('classification.R', local=TRUE)
+	source('./aomodels.R', local=TRUE)
+	source('./classification.R', local=TRUE)
 }); Sys.time()
 
 # initialize objects
