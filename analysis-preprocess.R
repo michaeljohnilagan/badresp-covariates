@@ -4,8 +4,8 @@ list.files()
 # load raw dataframes
 env_raw = new.env()
 with(env_raw, {
-	dat_z = readRDS('./experiments1&4-results-to-analysis.RDS')
-	dat_x = read.csv('./auxiliary-data-wide.csv', sep=',')
+	dat_z = readRDS('./data/experiments1&4-results-to-analysis.RDS')
+	dat_x = read.csv('./data/auxiliary-data-wide.csv', sep=',')
 })
 sapply(env_raw, dim)
 str(env_raw$dat_x)
@@ -118,6 +118,5 @@ t(sapply(processed_data, names))
 
 # save processed data
 Sys.time()
-saveRDS(processed_data, 'analysis-preprocess.RDS')
+saveRDS(processed_data, './data/analysis-preprocess.RDS')
 devtools::session_info()
-
