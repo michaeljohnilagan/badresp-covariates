@@ -269,7 +269,7 @@ private=list(
 	# coordinates for decision boundary
 	coords_decibo = function(success_counts=private$success_counts,
 	steepness=private$steepness, features=private$features, 
-	slopes=private$slopes) {
+	slopes=private$slopes, true_class_labels=NULL) {
 		# get all mass points
 		masspoints = 0:private$size
 		# compute the linear combination values
@@ -282,9 +282,13 @@ private=list(
 			slopes=u)
 			approx(x=postr, y=masspoints, xout=0.5)$y
 		})
+		# get the predicted class label
+		predicted_class_labels = ifelse(success_counts>boundary_count, 
+		1, 0)
 		# make sorted dataframe
 		df = data.frame(lincomb=lin_comb, boundarycount=boundary_count, 
-		rawcount=success_counts)
+		rawcount=success_counts, truelabel=true_class_labels, 
+		predlabel=predicted_class_labels)
 		df_ordered = df[order(df[['lincomb']]), ]
 		return(df_ordered)
 	},
