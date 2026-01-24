@@ -118,7 +118,7 @@ processed_data = lapply(df_by_pointscale, function(df) {
 		df[, g]
 	})
 })
-t(sapply(processed_data, str))
+t(sapply(processed_data, names))
 
 # save processed data
 Sys.time()
