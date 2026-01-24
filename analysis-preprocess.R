@@ -1,15 +1,17 @@
-# show files
+# list files
 list.files()
 
 # load raw dataframes
 env_raw = new.env()
 with(env_raw, {
+	# likert data
 	dat_z = readRDS('./data/experiments1&4-results-to-analysis.RDS')
+	# covariates data
 	dat_x = read.csv('./data/auxiliary-data-wide.csv', sep=',')
 })
 sapply(env_raw, dim)
-str(env_raw$dat_x)
 colnames(env_raw$dat_z)
+str(env_raw$dat_x)
 
 # verify that rows have unique ID
 sapply(env_raw, function(df) {
@@ -62,12 +64,14 @@ sort(sapply(unlist(colnames_list$x), function(nm) {
 }), decreasing=TRUE)
 
 # select stimuli conditions
-conditions_included = setdiff(df_unsplit[['stimuli']], 'standard')
+conditions_included = setdiff(df_unsplit[['stimuli']], 
+'standard') # everything except 'standard'
 df_unsplit = subset(df_unsplit, stimuli %in% conditions_included)
 table(df_unsplit[['stimuli']])
 
 # class label as stimuli
-df_unsplit[['stimuli']] = ifelse(df_unsplit[['stimuli']]=='inattentive', 1, 0)
+df_unsplit[['stimuli']] = ifelse(df_unsplit[['stimuli']]=='inattentive', 
+1, 0) # inattentive is class 1
 table(df_unsplit[['stimuli']])
 
 # show response scale labels
@@ -114,7 +118,7 @@ processed_data = lapply(df_by_pointscale, function(df) {
 		df[, g]
 	})
 })
-t(sapply(processed_data, names))
+t(sapply(processed_data, str))
 
 # save processed data
 Sys.time()
