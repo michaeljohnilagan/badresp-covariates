@@ -276,11 +276,16 @@ private=list(
 		lin_comb = as.vector(as.matrix(features)%*%slopes)
 		# for each linear combination value, get the boundary count
 		boundary_count = sapply(lin_comb, function(u) {
+			# compute probabilities
 			postr = self$calc_postr_cnr(
 			success_counts=masspoints, 
 			features=cbind(rep(1, times=length(masspoints))),
 			slopes=u)
-			approx(x=postr, y=masspoints, xout=0.5)$y
+			# linear interpolation
+			idx_lo = max(which(postr<=0.5))
+			idx_hi = min(which(postr>=0.5))
+			approx(x=postr[idx_lo:idx_hi], 
+			y=masspoints[idx_lo:idx_hi], xout=0.5)$y
 		})
 		# get the predicted class label
 		predicted_class_labels = ifelse(success_counts>boundary_count, 
@@ -520,7 +525,10 @@ public=list(
 		masspoints = 0:private$size
 		postr = self$calc_postr_cnr(success_counts=masspoints, 
 		steepness=steepness, prevalence=prevalence)
-		threshold = approx(x=postr, y=masspoints, xout=0.5)$y
+		idx_lo = max(which(postr<=0.5))
+		idx_hi = min(which(postr>=0.5))
+		threshold = approx(x=postr[idx_lo:idx_hi], y=masspoints[idx_lo:idx_hi], 
+		xout=0.5)$y
 		return(threshold)
 	},
 	# calculate bayes classifier metrics
