@@ -109,5 +109,5 @@ with(new.env(), {
 dev.off()
 
 # end session
-devtools::ses
-sion_info()
+Sys.time()
+devtools::session_info()

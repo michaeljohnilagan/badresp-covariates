@@ -207,6 +207,6 @@ num_replicates=settings$superv$num_replicates)); Sys.time()
 round(100*metrics_superv_rf_10, 1)
 
 # end session
+Sys.time()
 save.image("./analysis.RData")
 devtools::session_info()
-
