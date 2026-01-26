@@ -335,5 +335,6 @@ summarize_cell = function(tab) {
 sim_tab = do.call(rbind, lapply(sim_results, summarize_cell))
 
 # end session
+Sys.time()
 save.image("./simulation.RData")
 devtools::session_info()
