@@ -1,3 +1,6 @@
+# import packages
+library('lattice')
+
 # load analysis results
 load('./simulation.RData')
 
