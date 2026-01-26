@@ -70,9 +70,9 @@ samplers$likert = with(new.env(), {
 
 # settings: covariates
 settings$covariates = with(new.env(), {
-	usefulcorr = +0.1 # correlation between useful covariates
+	usefulcorr = 0 # correlation between useful covariates
 	numcols_useful = 2 # how many useful covariates
-	numcols_useless = 2 # how many useless covariates
+	numcols_useless = 8 # how many useless covariates
 	xsep_auc = setNames(c(0.5, 0.6, 0.7, 0.8), 
 	c('none', 'small', 'medium', 'large')) # target AUCs
 	list(usefulcorr=usefulcorr, numcols_useful=numcols_useful, 
