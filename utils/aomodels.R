@@ -282,10 +282,14 @@ private=list(
 			features=cbind(rep(1, times=length(masspoints))),
 			slopes=u)
 			# linear interpolation
-			idx_lo = max(which(postr<=0.5))
-			idx_hi = min(which(postr>=0.5))
-			approx(x=postr[idx_lo:idx_hi], 
-			y=masspoints[idx_lo:idx_hi], xout=0.5)$y
+			if(round(postr[1])==round(postr[length(postr)])) {
+				NA
+			} else {
+				idx_lo = max(which(postr<=0.5))
+				idx_hi = min(which(postr>=0.5))
+				approx(x=postr[idx_lo:idx_hi], 
+				y=masspoints[idx_lo:idx_hi], xout=0.5)$y
+			}
 		})
 		# get the predicted class label
 		predicted_class_labels = ifelse(success_counts>boundary_count, 
