@@ -296,8 +296,10 @@ private=list(
 		1, 0)
 		# make sorted dataframe
 		df = data.frame(lincomb=lin_comb, boundarycount=boundary_count, 
-		rawcount=success_counts, truelabel=true_class_labels, 
-		predlabel=predicted_class_labels)
+		rawcount=success_counts, predlabel=predicted_class_labels)
+		if(!is.null(true_class_labels)) {
+			df[['truelabel']] = true_class_labels
+		}
 		df_ordered = df[order(df[['lincomb']]), ]
 		return(df_ordered)
 	},
