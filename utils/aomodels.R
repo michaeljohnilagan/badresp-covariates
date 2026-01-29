@@ -179,7 +179,8 @@ private=list(
 		return(invisible(NULL))
 	},
 	# compute prevalences
-	calc_prev = function(features, slopes) {
+	calc_prev = function(features=private$features, 
+	slopes=private$slopes) {
 		prevalences = as.vector(plogis(features%*%slopes))
 		return(prevalences)
 	},
