@@ -216,7 +216,7 @@ run_repl = function(n, contam, xsep, zwhich, verbose=FALSE) {
 	# predictions: AO0 clasiffier
 	mod0 = ao$AO0Model$new(tables=settings$ao$cbt)
 	mod0$fit_mm(success_counts=succ)
-	pred_class_lab_ao0 = round(mod0$calc_postr_cnr())
+	pred_class_lab_ao0 = round(mod0$calc_postr()[, '1'])
 	# predictions: AO1 classifier
 	init = c(mod0$par_get()$steepness, qlogis(mod0$par_get()$prevalence), 
 	rep(0, times=num_features-1))
@@ -234,7 +234,7 @@ run_repl = function(n, contam, xsep, zwhich, verbose=FALSE) {
 	if(optim_exception) {
 		mod1 = mod0$clone()
 	}
-	pred_class_lab_ao1 = round(mod1$calc_postr_cnr())
+	pred_class_lab_ao1 = round(mod1$calc_postr()[, '1'])
 	# get metrics
 	metrics = function(predicted_class_label) {
 		ao$metrics(true_class_label=dat$y, 

@@ -88,8 +88,8 @@ run_ps_unsuperv = function(ps_list, pointscale) {
 	numperms=numperms, feat_funs=feat_funs, feat_idvals=feat_idvals)
 	# extract predictions
 	pred_class_lab_sc = ifelse(fit$pval>=(1-nomsens), 1, 0)
-	pred_class_lab_ao0 = round(fit$ao0$calc_postr_cnr())
-	pred_class_lab_ao1 = round(fit$ao1$calc_postr_cnr())
+	pred_class_lab_ao0 = round(fit$ao0$calc_postr()[, '1'])
+	pred_class_lab_ao1 = round(fit$ao1$calc_postr()[, '1'])
 	list_preds = list(sc=pred_class_lab_sc, 
 	ao0=pred_class_lab_ao0, ao1=pred_class_lab_ao1)
 	# calculate metrics
