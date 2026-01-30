@@ -398,9 +398,9 @@ with(new.env(), {
 	masspoints = 0:size
 	baseline = calc_postr_cnr_ao0(masspoints, size=size, 
 	steepness=steepness, prevalence=prevalence)
-	efficient = mod$calc_postr_cnr(success_counts=masspoints, 
+	efficient = mod$calc_postr(success_counts=masspoints, 
 	steepness=steepness, features=cbind(rep(1, 
-	length.out=length(masspoints))), slopes=rbind(qlogis(prevalence)))
+	length.out=length(masspoints))), slopes=rbind(qlogis(prevalence)))[, '1']
 	# compare
 	plot(baseline, efficient, main=Sys.time()); abline(0:1)
 	err = efficient-baseline
@@ -424,7 +424,7 @@ with(new.env(), {
 	baseline = calc_postr_cnr_ao0(masspoints, size=size, 
 	steepness=steepness, prevalence=prevalence)
 	mod$par_set(steepness=steepness, prevalence=prevalence)
-	efficient = mod$calc_postr_cnr(success_counts=masspoints)
+	efficient = mod$calc_postr(success_counts=masspoints)[, '1']
 	# compare
 	plot(baseline, efficient, main=Sys.time()); abline(0:1)
 	err = efficient-baseline
@@ -597,7 +597,7 @@ with(new.env(), {
 	message('AO1')
 	display(mod1)
 	boundary_coords = mod1$coords_decibo()
-	correct1 = y==round(mod1$calc_postr_cnr())
+	correct1 = y==round(mod1$calc_postr()[, '1'])
 	plot(qlogis(prevalence), sc, pch=as.character(y), 
 	col=ifelse(correct1, 'green', 'red'), xlab='covariate', 
 	ylab='success count')
@@ -606,7 +606,7 @@ with(new.env(), {
 	message('AO0')
 	display(mod0)
 	sc_threshold = mod0$threshold_ao0()
-	correct0 = y==round(mod0$calc_postr_cnr())
+	correct0 = y==round(mod0$calc_postr()[, '1'])
 	abline(h=sc_threshold)
 })
 

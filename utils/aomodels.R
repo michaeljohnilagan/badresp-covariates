@@ -200,69 +200,100 @@ private=list(
 		return(invisible(NULL))
 	},
 	# compute prevalences
-	calc_prev = function(features=private$features, 
+	calc_prevalence_ao1 = function(features=private$features, 
 	slopes=private$slopes) {
-		prevalences = as.vector(plogis(features%*%slopes))
-		return(prevalences)
+		prevalence = as.vector(plogis(features%*%slopes))
+		return(prevalence)
 	},
-	# compute AO0 PMF
-	dao0 = function(success_counts, steepness, prevalences) {
-		# compute PMF by class
+	# compute prevalences (again)
+	calc_prevalence = function(features=private$features, 
+	slopes=private$slopes) {
+		return(self$calc_prevalence_ao1(features=features, 
+		slopes=slopes))
+	},
+	# compute class likelihoods
+	calc_class_likelihoods = function(success_counts, 
+	steepness=private$steepness) {
 		pmf_class0 = private$tables$dcarpbin(shifts=steepness, 
 		success_counts=success_counts)
 		pmf_class1 = private$tables$dcarpbin(shifts=0, 
 		success_counts=success_counts)
-		# mix the two classes
-		pmf_mix = prevalences*pmf_class1+(1-prevalences)*pmf_class0
-		return(pmf_mix)
+		df = setNames(data.frame(pmf_class0, pmf_class1), c('0', '1'))
+		return(df)
+	},
+	# compute prior times likelihood
+	calc_prior_times_likelihood_ao1 = function(success_counts, 
+	features=private$features, steepness=private$steepness, 
+	slopes=private$slopes) {
+		prev_cnr = self$calc_prevalence(features=features, 
+		slopes=slopes)
+		prevalences = setNames(list(1-prev_cnr, prev_cnr), c('0', '1'))
+		class_likelihoods = self$calc_class_likelihoods(
+		success_counts=success_counts, steepness=steepness)
+		product = mapply(function(u1, u2) {
+			u1*u2
+		}, u1=prevalences, u2=class_likelihoods)
+		return(product)
+	},
+	# compute prior times likelihood (again)
+	calc_prior_times_likelihood = function(success_counts, 
+	features=private$features, steepness=private$steepness, 
+	slopes=private$slopes) {
+		return(self$calc_prior_times_likelihood_ao1(success_counts, 
+		features=features, steepness=steepness, slopes=slopes))
 	},
 	# compute AO1 PMF
-	dao1 = function(success_counts, features, steepness, slopes) {
-		prevalences = self$calc_prev(features=features, slopes=slopes)
-		pmf_mix = self$dao0(success_counts=success_counts, 
-		steepness=steepness, prevalences=prevalences)
-		return(pmf_mix)
+	dao1 = function(success_counts, features=private$features, 
+	steepness=private$steepness, slopes=private$slopes) {
+		product = self$calc_prior_times_likelihood(
+		success_counts=success_counts, features=features, 
+		steepness=steepness, slopes=slopes)
+		prob_mix = rowSums(product)
+		return(prob_mix)
 	},
 	# compute likelihood
-	loglikelihood = function(steepness=private$steepness, 
+	loglikelihood_ao1 = function(steepness=private$steepness, 
 	slopes=private$slopes, features=private$features, 
 	success_counts=private$success_counts) {
 		lik = self$dao1(success_counts=success_counts, features=features,
 		steepness=steepness, slopes=slopes)
 		return(sum(log(lik)))
 	},
-	# compute posterior probability of CNR
-	calc_postr_cnr_ao1 = function(success_counts=private$success_counts, 
-	features=private$features, steepness=private$steepness, 
-	slopes=private$slopes) {
-		# compute class 1 (CNR) prior
-		prevalence = self$calc_prev(features=features, slopes=slopes)
-		# compute likelihood by class
-		likelihood_class0 = private$tables$dcarpbin(shifts=steepness, 
-		success_counts=success_counts)
-		likelihood_class1 = private$tables$dcarpbin(shifts=0, 
-		success_counts=success_counts)
-		# numerator and denominator of posterior
-		postr_numerator = prevalence*likelihood_class1
-		postr_denominator = postr_numerator+(1-prevalence)*
-		likelihood_class0
-		postr = postr_numerator/postr_denominator
-		return(postr)
+	# compute likelihood (again)
+	loglikelihood = function(steepness=private$steepness, 
+	slopes=private$slopes, features=private$features, 
+	success_counts=private$success_counts) {
+		return(self$loglikelihood_ao1(steepness=steepness, slopes=slopes, 
+		features=features, success_counts=success_counts))
 	},
-	# compute posterior probability of CNR (again)
-	calc_postr_cnr = function(success_counts=private$success_counts, 
+	# compute posterior probability
+	calc_postr_ao1 = function(success_counts=private$success_counts, 
 	features=private$features, steepness=private$steepness, 
 	slopes=private$slopes) {
-		self$calc_postr_cnr_ao1(success_counts=success_counts, 
-		features=features, steepness=steepness, slopes=slopes)
+		product = self$calc_prior_times_likelihood(
+		success_counts=success_counts, features=features, 
+		steepness=steepness, slopes=slopes)
+		class_postr = t(sapply(1:nrow(product), function(i) {
+			nume = product[i, ]
+			deno = sum(nume)
+			nume/deno
+		}))
+		return(class_postr)
+	},
+	# compute posterior probability (again)
+	calc_postr = function(success_counts=private$success_counts, 
+	features=private$features, steepness=private$steepness, 
+	slopes=private$slopes) {
+		return(self$calc_postr_ao1(success_counts=success_counts, 
+		features=features, steepness=steepness, slopes=slopes))
 	},
 	# calculate bayes classifier metrics
 	calc_metrics_ao1 = function(true_class_labels, 
 	success_counts=private$success_counts, steepness=private$steepness, 
 	features=private$features, slopes=private$slopes) {
 		# get predicted labels
-		class1prob = self$calc_postr_cnr_ao1(success_counts=success_counts,
-		features=features, steepness=steepness, slopes=slopes)
+		class1prob = self$calc_postr_ao1(success_counts=success_counts,
+		features=features, steepness=steepness, slopes=slopes)[, '1']
 		predicted_class_labels = round(class1prob)
 		# metrics
 		confmat = table(pred=predicted_class_labels, 
@@ -284,12 +315,39 @@ private=list(
 	calc_metrics = function(true_class_labels, 
 	success_counts=private$success_counts, steepness=private$steepness, 
 	features=private$features, slopes=private$slopes) {
-		self$calc_metrics_ao1(true_class_labels=true_class_labels, 
+		return(self$calc_metrics_ao1(true_class_labels, 
 		success_counts=success_counts, steepness=steepness, 
-		features=features, slopes=slopes)
+		features=features, slopes=slopes))
 	},
+	# conditional threshold
+	calc_boundary = function(linear_comb, steepness=private$steepness) {
+		masspoints = 0:private$size
+		intercept = cbind(rep(1, times=length(masspoints)))
+		boundary = sapply(linear_comb, function(u) {
+			# get posterior probability of CNR
+			postr_cnr = self$calc_postr_ao1(
+			success_counts=masspoints, features=intercept, 
+			steepness=steepness, 
+			slopes=linear_comb)[, '1'] # use AO1 method
+			# emergency exit if all predict same class
+			round_postr_cnr = round(postr_cnr)
+			if(round_postr_cnr[1]==
+			round_postr_cnr[length(round_postr_cnr)]) {
+				return(NA)
+			}
+			# interpolate
+			idx_lower = findInterval(0.5, postr_cnr, 
+			rightmost.closed=TRUE)
+			idx = idx_lower:(idx_lower+1)
+			approx(x=postr_cnr[idx], y=masspoints[idx], 
+			xout=0.5)$y
+		})
+		return(boundary)
+	},
+	
+	
 	# coordinates for decision boundary
-	coords_decibo = function(success_counts=private$success_counts,
+	coords_decibo_ao1 = function(success_counts=private$success_counts,
 	steepness=private$steepness, features=private$features, 
 	slopes=private$slopes, true_class_labels=NULL) {
 		# get all mass points
@@ -297,21 +355,7 @@ private=list(
 		# compute the linear combination values
 		lin_comb = as.vector(as.matrix(features)%*%slopes)
 		# for each linear combination value, get the boundary count
-		boundary_count = sapply(lin_comb, function(u) {
-			# compute probabilities
-			postr = self$calc_postr_cnr(
-			success_counts=masspoints, 
-			features=cbind(rep(1, times=length(masspoints))),
-			slopes=u)
-			# linear interpolation
-			if(round(postr[1])==round(postr[length(postr)])) {
-				NA
-			} else {
-				idx_lower = findInterval(0.5, postr, rightmost.closed=TRUE)
-				idx = idx_lower:(idx_lower+1)
-				approx(x=postr[idx], y=masspoints[idx], xout=0.5)$y
-			}
-		})
+		boundary_count = sapply(lin_comb, self$calc_boundary)
 		# get the predicted class label
 		predicted_class_labels = ifelse(success_counts>boundary_count, 
 		1, 0)
@@ -323,6 +367,14 @@ private=list(
 		}
 		df_ordered = df[order(df[['lincomb']]), ]
 		return(df_ordered)
+	},
+	# coordinates for decision boundary (again)
+	coords_decibo = function(success_counts=private$success_counts,
+	steepness=private$steepness, features=private$features, 
+	slopes=private$slopes, true_class_labels=NULL) {
+		return(self$coords_decibo_ao1(success_counts=success_counts, 
+		steepness=steepness, features=features, slopes=slopes, 
+		true_class_labels=true_class_labels))
 	},
 	# find params implied by matching to mean for fixed steepness
 	match_implied_params = function(steepness, mix_mean) {
@@ -433,9 +485,9 @@ private=list(
 		# main loop
 		for(iter in 1:maxit) {
 			# from old params, calculate posterior
-			postr = self$calc_postr_cnr(
+			postr = self$calc_postr(
 			success_counts=success_counts, features=features, 
-			steepness=estimate[1], slopes=estimate[-1])
+			steepness=estimate[1], slopes=estimate[-1])[, '1']
 			# from posterior, estimate new steepness
 			weights_for_moment = (1-postr)/sum(1-postr)
 			class0_mean = sum(weights_for_moment*success_counts)
@@ -530,43 +582,78 @@ public=list(
 		private$success_counts = success_counts
 		return(invisible(NULL))
 	},
-	# compute likelihood
-	loglikelihood = function(steepness=private$steepness, 
-	prevalence=plogis(private$slopes), 
-	success_counts=private$success_counts) {
-		lik = self$dao0(success_counts=success_counts, steepness=steepness, 
-		prevalences=prevalence)
-		return(sum(log(lik)))
-	},
-	# compute posterior probability of CNR
-	calc_postr_cnr = function(success_counts=private$success_counts, 
-	steepness=private$steepness, prevalence=plogis(private$slopes)) {
+
+	# cast as AO1
+	cast_as_ao1 = function(success_counts, prevalence=plogis(private$slopes)) {
 		features = cbind(rep(1, times=length(success_counts)))
 		slopes = qlogis(prevalence)
-		self$calc_postr_cnr_ao1(success_counts=success_counts, features=features, 
-		steepness=steepness, slopes=slopes)
+		common = list(features=features, slopes=slopes)
+		return(common)
 	},
-	# get AO0 decision boundary
-	threshold_ao0 = function(steepness=private$steepness, 
+	# compute AO0 PMF
+	dao0 = function(success_counts, steepness=private$steepness, 
 	prevalence=plogis(private$slopes)) {
-		masspoints = 0:private$size
-		postr = self$calc_postr_cnr(success_counts=masspoints, 
-		steepness=steepness, prevalence=prevalence)
-		idx_lo = max(which(postr<=0.5))
-		idx_hi = min(which(postr>=0.5))
-		threshold = approx(x=postr[idx_lo:idx_hi], y=masspoints[idx_lo:idx_hi], 
-		xout=0.5)$y
-		return(threshold)
+		# cast as AO1
+		common = self$cast_as_ao1(success_counts=success_counts, 
+		prevalence=prevalence)
+		# use AO1 method
+		product = self$calc_prior_times_likelihood_ao1(
+		success_counts=success_counts, features=common$features,
+		steepness=steepness, slopes=common$slopes)
+		prob_mix = rowSums(product)
+		return(prob_mix)
+	},
+	# compute likelihood
+	loglikelihood = function(steepness=private$steepness, 
+	prevalence=plogis(private$slopes), success_counts=private$success_counts) {
+		lik = self$dao0(success_counts=success_counts, steepness=steepness, 
+		prevalence=prevalence)
+		return(sum(log(lik)))
+	},
+	# compute posterior probability
+	calc_postr = function(success_counts=private$success_counts, 
+	steepness=private$steepness, prevalence=plogis(private$slopes)) {
+		# cast as AO1
+		common = self$cast_as_ao1(success_counts=success_counts, 
+		prevalence=prevalence)
+		# use AO1 method
+		class_postr = self$calc_postr_ao1(success_counts=success_counts, 
+		features=common$features, steepness=steepness, slopes=common$slopes)
+		return(class_postr)
 	},
 	# calculate bayes classifier metrics
 	calc_metrics = function(true_class_labels, 
 	success_counts=private$success_counts, steepness=private$steepness, 
 	prevalence=plogis(private$slopes)) {
-		features = cbind(rep(1, times=length(success_counts)))
-		slopes = qlogis(prevalence)
-		self$calc_metrics_ao1(true_class_labels=true_class_labels, 
-		success_counts=success_counts, features=features, 
-		steepness=steepness, slopes=slopes)
+		# cast as AO1
+		common = self$cast_as_ao1(success_counts=success_counts, 
+		prevalence=prevalence)
+		# use AO1 method
+		metrics = self$calc_metrics_ao1(true_class_labels, 
+		success_counts=success_counts, steepness=steepness, 
+		features=common$features, slopes=common$slopes)
+		return(metrics)
+	},
+	# coordinates for decision boundary
+	coords_decibo = function(success_counts=private$success_counts,
+	steepness=private$steepness, slopes=plogis(private$slopes), 
+	true_class_labels=NULL) {
+		# cast as AO1
+		common = self$cast_as_ao1(success_counts=success_counts, 
+		prevalence=prevalence)
+		# use AO1 method
+		coords = self$coords_decibo_ao1(
+		success_counts=success_counts, steepness=steepness, 
+		features=common$features, slopes=common$slopes, 
+		true_class_labels=true_class_labels)
+		return(coords)
+	},
+
+	# get AO0 decision boundary
+	threshold_ao0 = function(steepness=private$steepness, 
+	prevalence=plogis(private$slopes)) {
+		return(self$calc_boundary(qlogis(prevalence), 
+		steepness=steepness))
 	},
 	# fitting via method of moments
 	fit_mm = function(success_counts) {
@@ -602,4 +689,3 @@ public=list(
 		return(invisible(NULL))
 	}
 ))
-
