@@ -78,9 +78,20 @@ private=list(
 	dcarpbin_sameshift = function(shift, success_counts) {
 		# assert
 		stopifnot(length(shift)==1)
-		# look up
-		shift_idx = min(which(shift<=private$shifts))
-		pmf = private$table_pmf[shift_idx, ]
+		# find index to use
+		idx_lower = findInterval(shift, private$shifts, 
+		rightmost.closed=TRUE)
+		if(idx_lower==0|idx_lower==length(private$shifts)) {
+			return(NA)
+		} # out of range
+		idx_upper = idx_lower+1
+		# interpolate
+		betweenness = (shift-private$shifts[idx_lower])/
+		(private$shifts[idx_upper]-private$shifts[idx_lower])
+		pmf_lower = private$table_pmf[idx_lower, ]
+		pmf_upper = private$table_pmf[idx_upper, ]
+		pmf = pmf_lower+betweenness*(pmf_upper-pmf_lower)
+		# look up interpolated values
 		masspoints = 0:private$size
 		lookedup = pmf[match(success_counts, masspoints)]
 		return(lookedup)
@@ -286,10 +297,9 @@ private=list(
 			if(round(postr[1])==round(postr[length(postr)])) {
 				NA
 			} else {
-				idx_lo = max(which(postr<=0.5))
-				idx_hi = min(which(postr>=0.5))
-				approx(x=postr[idx_lo:idx_hi], 
-				y=masspoints[idx_lo:idx_hi], xout=0.5)$y
+				idx_lower = findInterval(0.5, postr, rightmost.closed=TRUE)
+				idx = idx_lower:(idx_lower+1)
+				approx(x=postr[idx], y=masspoints[idx], xout=0.5)$y
 			}
 		})
 		# get the predicted class label
