@@ -184,6 +184,16 @@ private=list(
 		private$features = features
 		return(invisible(NULL))
 	},
+	# set data, features only
+	data_set_features = function(features) {
+		private$features = features
+		return(invisible(NULL))
+	},
+	# set data, success counts only
+	data_set_success_counts = function(success_counts) {
+		private$success_counts = success_counts
+		return(invisible(NULL))
+	},
 	# clear data
 	data_clear = function() {
 		self$data_set(success_counts=NULL, features=NULL)
