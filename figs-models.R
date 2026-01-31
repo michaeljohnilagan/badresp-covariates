@@ -28,7 +28,7 @@ dev.off()
 
 # function for barplots
 ao0_barplot = function(steepness, prevalence, size, max_height=NULL, 
-shift_limit=-10, num_gridpoints=300) {
+header=TRUE, shift_limit=-10, num_gridpoints=300) {
 	# graphical params
 	if(is.null(max_height)) {
 		ylim = NULL
@@ -49,20 +49,30 @@ shift_limit=-10, num_gridpoints=300) {
 	pmf_by_class = mod0$calc_prior_times_likelihood(masspoints)
 	rownames(pmf_by_class) = masspoints
 	# plotting
+	if(header) {
+		main = bquote(paste(lambda==.(prevalence), ', ', 
+		delta==.(steepness)))
+	} else {
+		main = NULL
+	}
 	barplot(t(pmf_by_class[, c('1', '0')]), col=c('red', 'blue'), ylim=ylim,
-	xlab='success count', ylab='probability', 
+	xlab='success count', ylab='probability', main=main,
 	cex.names=cex.names, cex.axis=cex.axis, cex.lab=cex.lab)
 	return(pmf_by_class)
 }
 
 # AO0 PMF-by-class barplots
 pdf("figs-models-ao0.pdf")
-ao0_barplot(prevalence=0.25, steepness=-1, size=15, max_height=0.5)
+ao0_barplot(prevalence=0.25, steepness=-1, size=15, max_height=0.5, 
+header=TRUE)
 legend("topright", legend=c('not careless', 'careless'), col=c('blue', 'red'), 
 pch=16, cex=1.35, bg="gray90")
-ao0_barplot(prevalence=0.25, steepness=-2, size=15, max_height=0.5)
-ao0_barplot(prevalence=0.75, steepness=-1, size=15, max_height=0.5)
-ao0_barplot(prevalence=0.75, steepness=-2, size=15, max_height=0.5)
+ao0_barplot(prevalence=0.25, steepness=-2, size=15, max_height=0.5,
+header=TRUE)
+ao0_barplot(prevalence=0.75, steepness=-1, size=15, max_height=0.5,
+header=TRUE)
+ao0_barplot(prevalence=0.75, steepness=-2, size=15, max_height=0.5,
+header=TRUE)
 dev.off()
 
 # generate data to use in demo for decision boundary
