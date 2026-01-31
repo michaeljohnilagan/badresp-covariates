@@ -4,28 +4,39 @@ load('./analysis.RData')
 # function: plot the unsupervised result, for a pointscale
 visualize_ps_unsuperv = function(true_class_labels, model_ao0, model_ao1, 
 nomsens, main=NA) {
+	# hard coded graphical params
+	lwd = 3
+	cex.axis = 2
+	cex.lab = 1.5
+	cex = 1.5
+	# colors for correct vs incorrect prediction
+	correct_col = 'gray40'
+	incorrect_col = 'red'
 	# get coordinates
 	coords = model_ao1$coords_decibo(true_class_labels=true_class_labels)
 	# plot AO1 decision boundary
 	with(coords, {
 		plot(lincomb, rawcount, type='n', 
-		xlab='linear combination of covariates', ylab='success count', main=main)
-		lines(lincomb, boundarycount)
+		xlab='linear combination of covariates', ylab='success count', 
+		main=main, 
+		cex=cex, cex.axis=cex.axis, cex.lab=cex.lab)
+		lines(lincomb, boundarycount, lwd=lwd)
 	})
 	# plot AO0 decision boundary
 	thresh_ao0 = model_ao0$threshold_ao0()
-	abline(h=thresh_ao0, lty=1)
+	abline(h=thresh_ao0, lty=1, lwd=lwd)
 	# plot sensitivity calibrated decision boundary
 	size = model_ao1$par_get()$size
 	thresh_sc = (1-nomsens)*(size+1)-1
-	abline(h=thresh_sc, lty=2)
+	abline(h=thresh_sc, lty=2, lwd=lwd)
 	# plot points
 	with(subset(coords, truelabel==predlabel), {
-		points(lincomb, rawcount, pch=as.character(truelabel))
+		points(lincomb, rawcount, pch=as.character(truelabel), 
+		col=correct_col, cex=cex)
 	}) # correct predictions
-	incorrect_col = 'red'
 	with(subset(coords, truelabel!=predlabel), {
-		points(lincomb, rawcount, pch=as.character(truelabel), col=incorrect_col)
+		points(lincomb, rawcount, pch=as.character(truelabel), 
+		col=incorrect_col, cex=cex)
 	}) # incorrect predictions
 	return(NULL)
 }
@@ -33,6 +44,10 @@ nomsens, main=NA) {
 # produce PDF for unsupervised decision boundaries
 pdf('figs-analysis-decibo.pdf')
 invisible(sapply(results_unsuperv, function(o) {
+	# hard coded graphical params
+	lwd = 3
+	cex = 1.5
+	bg = 'gray90'
 	# unpack
 	y = o$plotting$y
 	model_ao0 = o$plotting$fit$ao0
@@ -43,6 +58,14 @@ invisible(sapply(results_unsuperv, function(o) {
 	visualize_ps_unsuperv(true_class_labels=y, model_ao0=model_ao0, 
 	model_ao1=model_ao1, nomsens=nomsens, 
 	main=paste(pointscale, ' point scale', sep=''))
+	# legend
+	if(FALSE) {
+		legend('topleft', title='boundaries', lty=3:1,
+		legend=c('AO1', 'AO0', '95% SC'), bg=bg, cex=cex, lwd=lwd)
+		legend('left', title='result', pch=19, lty=0, 
+		col=c('gray40', 'red'), legend=c('correct', 'incorrect'), 
+		bg=bg, cex=cex, lwd=lwd)
+	}
 }))
 dev.off()
 
@@ -53,6 +76,11 @@ name2col, ylab=NA) {
 	stopifnot(length(outcome_measure)==1)
 	stopifnot(outcome_measure %in% c('acc', 'sens', 'spec', 'ppv', 'npv', 
 	'flagrate'))
+	# hard coded graphical params
+	lwd = 3
+	cex.axis = 2
+	cex.lab = 1.5
+	cex = 1.5
 	# hard coded point scales
 	pointscales = c(3:7, 10:11)
 	xlab = 'number of response categories'
@@ -63,16 +91,17 @@ name2col, ylab=NA) {
 	# canvas
 	plot(NA, NA, type='n', xaxt='n',
 	xlim=range(pointscales), ylim=range(relevant),
-	xlab=xlab, ylab=ylab)
-	axis(1, at=pointscales, labels=pointscales)
+	xlab=xlab, ylab=ylab,
+	cex.axis=cex.axis, cex.lab=cex.lab, cex=cex)
+	axis(1, at=pointscales, labels=pointscales, cex.axis=cex.axis)
 	# determine colors
 	name2col = name2col
 	names(name2col) = paste(names(name2col), '.', outcome_measure, sep='')
 	# draw lines
 	column_names = colnames(relevant)
 	sapply(column_names, function(nm) {
-		lines(pointscales, relevant[, nm], col=name2col[nm], type='b', lwd=2, 
-		pch=19)
+		lines(pointscales, relevant[, nm], col=name2col[nm], type='b', 
+		lwd=lwd, pch=19)
 	})
 	# output the numbers
 	return(relevant)
@@ -94,17 +123,17 @@ with(new.env(), {
 	vis_acc = visualize_compare_by_outcome_measure(tables=relevant_metrics, 
 	outcome_measure='acc', ylab='accuracy', name2col=name2col)
 	legend('right', pch=19, col=name2col[classifier_names], 
-	legend=name2legend[classifier_names])
+	legend=name2legend[classifier_names], cex=1.1, bg='gray90')
 	# plot sensitivity
 	vis_sens = visualize_compare_by_outcome_measure(tables=relevant_metrics, 
 	outcome_measure='sens', ylab='sensitivity', name2col=name2col)
 	legend('right', pch=19, col=name2col[classifier_names], 
-	legend=name2legend[classifier_names])
+	legend=name2legend[classifier_names], cex=1.1, bg='gray90')
 	# plot specificity
 	vis_spec = visualize_compare_by_outcome_measure(tables=relevant_metrics, 
 	outcome_measure='spec', ylab='specificity', name2col=name2col)
 	legend('right', pch=19, col=name2col[classifier_names], 
-	legend=name2legend[classifier_names])
+	legend=name2legend[classifier_names], cex=1.1, bg='gray90')
 })
 dev.off()
 
