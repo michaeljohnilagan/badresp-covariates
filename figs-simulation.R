@@ -6,7 +6,7 @@ load('./simulation.RData')
 
 # demonstrate xsep in 2D
 set.seed(840)
-pdf('./figs/simulation-xsep.pdf')
+pdf('./figs/figs-simulation-xsep.pdf')
 invisible(sapply(names(settings$covariates$xsep_auc), function(u) {
 	# true class label
 	y = rep(0:1, times=1e3)
