@@ -31,8 +31,7 @@ Sys.time(); settings$ao = with(new.env(), {
 	num_gridpoints = 300 # number of grid points to compute
 	cbt = ao$CarpBinTable$new(size=numperms, 
 	shift_limit=shift_limit, num_gridpoints=num_gridpoints) # table set
-	em_maxit = 50 # maximum iterations for EM algorithm
-	list(cbt=cbt, em_maxit=em_maxit)
+	list(cbt=cbt)
 }); Sys.time()
 
 # settings: likert
@@ -221,14 +220,8 @@ run_repl = function(n, contam, xsep, zwhich, verbose=FALSE) {
 	init = c(mod0$par_get()$steepness, qlogis(mod0$par_get()$prevalence), 
 	rep(0, times=num_features-1))
 	mod1 = ao$AO1Model$new(tables=settings$ao$cbt)
-	if(FALSE) {
-		trymod1 = try(mod1$fit_em(success_counts=succ, features=x, 
-		init=init,maxit=settings$ao$em_maxit, 
-		verbose=verbose), silent=TRUE) # EM algorithm
-	} else {
-		trymod1 = try(mod1$fit(success_counts=succ, features=x, 
-		init=init), silent=TRUE) # canned ML
-	}
+	trymod1 = try(mod1$fit(success_counts=succ, features=x, 
+	init=init), silent=TRUE) # canned ML
 	# default to AO0 if AO1 fails
 	optim_exception = class(trymod1)=='try-error'
 	if(optim_exception) {

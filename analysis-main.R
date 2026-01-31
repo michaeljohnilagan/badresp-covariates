@@ -32,8 +32,7 @@ Sys.time(); settings$ao = with(new.env(), {
 	num_gridpoints = 300 # number of grid points to compute
 	cbt = ao$CarpBinTable$new(size=numperms, 
 	shift_limit=shift_limit, num_gridpoints=num_gridpoints) # table set
-	em_maxit = 50 # maximum iterations for EM algorithm
-	list(cbt=cbt, em_maxit=em_maxit)
+	list(cbt=cbt)
 }); Sys.time()
 
 # settings: supervised predictions
@@ -64,8 +63,8 @@ impute_covariates = function(test, train) {
 	# replacement
 	test_new = setNames(lapply(1:ncol(test), function(j) {
 		current_col_train = train[,j]
-		replacement_value = mean(current_col_train[is.finite(current_col_train)], 
-		na.rm=TRUE)
+		replacement_value = mean(current_col_train[
+		is.finite(current_col_train)], na.rm=TRUE)
 		current_col_test = test[,j]
 		needs_replacement = is.na(current_col_test)|!is.finite(current_col_test)
 		replace(current_col_test, needs_replacement, replacement_value)
@@ -108,7 +107,7 @@ run_ps_unsuperv = function(ps_list, pointscale) {
 
 # function: do unsupervised analysis
 analysis_unsuperv = function(z, x, pointscales, numperms, feat_funs, 
-feat_idvals, use_em=FALSE) {
+feat_idvals) {
 	# assert
 	stopifnot(nrow(z)==nrow(x))
 	stopifnot(length(pointscales)==ncol(z))
@@ -127,14 +126,8 @@ feat_idvals, use_em=FALSE) {
 	init = c(mod0$par_get()$steepness, qlogis(mod0$par_get()$prevalence), 
 	rep(0, times=ncol(x)-1))
 	mod1 = ao$AO1Model$new(tables=settings$ao$cbt)
-	if(use_em) {
-		trymod1 = try(mod1$fit_em(success_counts=succ, features=x, 
-		init=init,maxit=settings$ao$em_maxit, 
-		verbose=verbose), silent=TRUE) # EM algorithm
-	} else {
-		trymod1 = try(mod1$fit(success_counts=succ, features=x, 
-		init=init), silent=TRUE) # canned ML
-	}
+	trymod1 = try(mod1$fit(success_counts=succ, features=x, 
+	init=init), silent=TRUE) # canned ML
 	# special handling if AO1 fails
 	optim_exception = class(trymod1)=='try-error'
 	if(optim_exception) {

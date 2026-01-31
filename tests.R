@@ -521,7 +521,6 @@ with(new.env(), {
 	cbtable = CarpBinTable$new(size=size, shift_limit=shift_limit, 
 	num_gridpoints=num_gridpoints)
 	mod1_ml = AO1Model$new(tables=cbtable)
-	mod1_em = AO1Model$new(tables=cbtable)
 	mod0 = AO0Model$new(tables=cbtable)
 	# stuff to display
 	display = function(mod) {
@@ -536,15 +535,9 @@ with(new.env(), {
 		print(round(unlist(met[-1]), 3))
 	}
 	# AO0 MM
-	message('AO0-MM')
+	message('AO0')
 	mod0$fit_mm(sc)
 	display(mod0)
-	# AO1 EM
-	message('EM')
-	mmest = mod0$par_get()
-	mod1_em$fit_em(sc, features, maxit=10, init=NULL, tol=0.01, 
-	verbose=TRUE)
-	display(mod1_em)
 	# AO1 canned ML
 	message('ML')
 	mod1_ml$fit(sc, features, init=NULL)
