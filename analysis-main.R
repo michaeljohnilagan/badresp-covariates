@@ -95,7 +95,8 @@ run_ps_unsuperv = function(ps_list, pointscale) {
 	# calculate metrics
 	y = ps_list$y
 	metrics = function(predicted_class_label) {
-		ao$metrics(true_class_label=y, predicted_class_label=predicted_class_label)
+		ao$metrics(true_class_label=y, 	
+		predicted_class_label=predicted_class_label)
 	}
 	met = unlist(lapply(list_preds, metrics))
 	# stuff for plotting

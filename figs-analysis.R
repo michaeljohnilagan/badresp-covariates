@@ -69,6 +69,48 @@ invisible(sapply(results_unsuperv, function(o) {
 }))
 dev.off()
 
+# produce PDF for unsupervised decision boundaries
+pdf('figs-analysis-boxplot.pdf')
+invisible(sapply(results_unsuperv, function(o) {
+	# hard coded graphical params
+	cex.axis = 2
+	cex.lab = 1.5
+	cex = 1.5
+	pointscale = o$plotting$pointscale
+	# unpack
+	y = o$plotting$y
+	pval = o$plotting$fit$pval
+	# plot
+	boxplot(pval~y, ylab='p value', xlab='true class label', 
+	main=paste(pointscale, ' point scale', sep=''),
+	cex=cex, cex.axis=cex.axis, cex.lab=cex.lab)
+}))
+dev.off()
+
+# produce PDF for unsupervised decision boundaries
+pdf('figs-analysis-ecdf.pdf')
+invisible(sapply(results_unsuperv, function(o) {
+	# hard coded graphical params
+	lwd = 2
+	cex.axis = 2
+	cex.lab = 1.5
+	cex = 1.35
+	pointscale = o$plotting$pointscale
+	# unpack
+	y = o$plotting$y
+	pval = o$plotting$fit$pval
+	# plot
+	cdf0 = ecdf(pval[y==0])
+	cdf1 = ecdf(pval[y==1])
+	plot(cdf0, col='blue', ylim=c(0, 1), xlim=c(0, 1),
+	xlab='p value', ylab='quantile rank', 
+	main=paste(pointscale, ' point scale', sep=''), 
+	cex=cex, cex.axis=cex.axis, cex.lab=cex.lab, lwd=lwd)
+	lines(cdf1, col='red', lwd=lwd, cex=cex)
+	abline(0:1, col='black', lty=1, lwd=lwd)
+}))
+dev.off()
+
 # function: visualize unsupervised vs supervised
 visualize_compare_by_outcome_measure = function(tables, outcome_measure, 
 name2col, ylab=NA) {
