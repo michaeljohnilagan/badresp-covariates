@@ -96,6 +96,7 @@ invisible(sapply(results_unsuperv, function(o) {
 	cex.lab = 1.5
 	cex = 1.35
 	pointscale = o$plotting$pointscale
+	bg = 'gray90'
 	# unpack
 	y = o$plotting$y
 	pval = o$plotting$fit$pval
@@ -108,6 +109,8 @@ invisible(sapply(results_unsuperv, function(o) {
 	cex=cex, cex.axis=cex.axis, cex.lab=cex.lab, lwd=lwd)
 	lines(cdf1, col='red', lwd=lwd, cex=cex)
 	abline(0:1, col='black', lty=1, lwd=lwd)
+	legend('bottomright', legend=c('not careless', 'careless'),
+	pch=19, lty=1, col=c('blue', 'red'), bg=bg, cex=cex)
 }))
 dev.off()
 
