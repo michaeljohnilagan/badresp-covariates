@@ -140,31 +140,6 @@ Sys.time(); samplers$covariates = with(new.env(), {
 	list(noncnr=sampler_noncnr, cnr=sampler_cnr)
 }); Sys.time()
 
-# demonstrate xsep in 2D
-set.seed(840)
-pdf('xsep.pdf')
-invisible(sapply(names(settings$covariates$xsep_auc), function(u) {
-	# true class label
-	y = rep(0:1, times=1e3)
-	# coordinates
-	x = t(sapply(y, function(yy) {
-		if(yy==1) {
-			samplers$covariates[['cnr']](u)
-		} else if(yy==0) {
-			samplers$covariates[['noncnr']]()
-		}
-	}))
-	# colors
-	opacity = 0.2
-	col0 = rgb(0, 0, 1, alpha=opacity)
-	col1 = rgb(1, 0, 0, alpha=opacity)
-	col = ifelse(y==1, col1, col0)
-	# plot
-	plot(x[, 1], x[, 2], col=col, pch=19, cex=1.5,
-	xlab='covariate 1', ylab='covariate 2', main=u)
-}))
-dev.off()
-
 # function: run simulation replicate, sampler
 run_repl_sampler = function(n, contam, xsep, zwhich) {
 	# true class label

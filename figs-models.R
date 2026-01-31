@@ -6,7 +6,7 @@ with(ao, {
 }); Sys.time()
 
 # plot carpaldens
-pdf('figs-models-carpal.pdf')
+pdf('./figs/figs-models-carpal.pdf')
 with(new.env(), {
 	# common params
 	lwd = 3
@@ -62,7 +62,7 @@ header=TRUE, shift_limit=-10, num_gridpoints=300) {
 }
 
 # AO0 PMF-by-class barplots
-pdf("figs-models-ao0.pdf")
+pdf("./figs/figs-models-ao0.pdf")
 ao0_barplot(prevalence=0.25, steepness=-1, size=15, max_height=0.5, 
 header=TRUE)
 legend("topright", legend=c('not careless', 'careless'), col=c('blue', 'red'), 
@@ -115,7 +115,7 @@ Sys.time(); with(env_decibo, {
 }); Sys.time()
 
 # plot demo of decision boundary
-pdf('figs-models-ao1.pdf')
+pdf('./figs/figs-models-ao1.pdf')
 with(env_decibo, {
 	# graphical params
 	lwd = 3
@@ -159,7 +159,7 @@ with(env_decibo, {
 dev.off()
 
 # difference in adjacent PMF
-pdf("figs-models-adjpmfdiff.pdf")
+pdf("./figs/figs-models-adjpmfdiff.pdf")
 curve(dbinom(5, size=10, prob=x)-dbinom(6, size=10, prob=x), from=0, to=1,
 xlab="success rate", 
 ylab="probability of 5 minus probability of 6 successes", 

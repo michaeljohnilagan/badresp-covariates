@@ -42,7 +42,7 @@ nomsens, main=NA) {
 }
 
 # produce PDF for unsupervised decision boundaries
-pdf('figs-analysis-decibo.pdf')
+pdf('./figs/figs-analysis-decibo.pdf')
 invisible(sapply(results_unsuperv, function(o) {
 	# hard coded graphical params
 	lwd = 3
@@ -70,7 +70,7 @@ invisible(sapply(results_unsuperv, function(o) {
 dev.off()
 
 # produce PDF for unsupervised decision boundaries
-pdf('figs-analysis-boxplot.pdf')
+pdf('./figs/figs-analysis-boxplot.pdf')
 invisible(sapply(results_unsuperv, function(o) {
 	# hard coded graphical params
 	cex.axis = 2
@@ -88,7 +88,7 @@ invisible(sapply(results_unsuperv, function(o) {
 dev.off()
 
 # produce PDF for unsupervised decision boundaries
-pdf('figs-analysis-ecdf.pdf')
+pdf('./figs/figs-analysis-ecdf.pdf')
 invisible(sapply(results_unsuperv, function(o) {
 	# hard coded graphical params
 	lwd = 2
@@ -153,7 +153,7 @@ name2col, ylab=NA) {
 }
 
 # produce PDF for unsupervised vs supervised
-pdf('figs-analysis-compare.pdf')
+pdf('./figs/figs-analysis-compare.pdf')
 with(new.env(), {
 	# set colors and legend label
 	classifier_names = c('sc', 'ao0', 'ao1', 'lr_10', 'rf_10')

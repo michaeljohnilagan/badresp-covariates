@@ -4,6 +4,31 @@ library('lattice')
 # load analysis results
 load('./simulation.RData')
 
+# demonstrate xsep in 2D
+set.seed(840)
+pdf('./figs/simulation-xsep.pdf')
+invisible(sapply(names(settings$covariates$xsep_auc), function(u) {
+	# true class label
+	y = rep(0:1, times=1e3)
+	# coordinates
+	x = t(sapply(y, function(yy) {
+		if(yy==1) {
+			samplers$covariates[['cnr']](u)
+		} else if(yy==0) {
+			samplers$covariates[['noncnr']]()
+		}
+	}))
+	# colors
+	opacity = 0.2
+	col0 = rgb(0, 0, 1, alpha=opacity)
+	col1 = rgb(1, 0, 0, alpha=opacity)
+	col = ifelse(y==1, col1, col0)
+	# plot
+	plot(x[, 1], x[, 2], col=col, pch=19, cex=1.5,
+	xlab='covariate 1', ylab='covariate 2', main=u)
+}))
+dev.off()
+
 # enumerateo n x contam pairs
 eg = expand.grid(n=sim_factors$n, contam=sim_factors$contam)
 
@@ -17,7 +42,7 @@ sim_tab_panelplots$n = paste('n=', sim_tab$n, sep='')
 sim_tab_panelplots$contam = paste('contam=', sim_tab$contam, sep='')
 
 # do panel plots: accuracy
-pdf('figs-simulation-acc.pdf')
+pdf('./figs/figs-simulation-acc.pdf')
 classifier2col = setNames(c('red3', 'green3', 'blue3'), c('sc', 'ao0', 'ao1'))
 key_acc = list(columns=3, lines=list(lty=rep(1:2, times=3), 
 col=rep(classifier2col[c('sc', 'ao0', 'ao1')], each=2)), 
@@ -57,7 +82,7 @@ key=key_acc)
 dev.off()
 
 # do panel plots: LL improved
-pdf('figs-simulation-llimproved.pdf')
+pdf('./figs/figs-simulation-llimproved.pdf')
 key_ll = list(lines=list(lty=1:2), text=list(label=c('all', 'even')))
 lattice::xyplot(ll_improved~factor(xsep, levels=sim_factors$xsep) | 
 factor(n)*factor(contam), data=sim_tab_panelplots, panel=function(x,y,...) {
