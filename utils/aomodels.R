@@ -222,9 +222,9 @@ private=list(
 		return(df)
 	},
 	# compute prior times likelihood
-	calc_prior_times_likelihood_ao1 = function(success_counts, 
-	features=private$features, steepness=private$steepness, 
-	slopes=private$slopes) {
+	calc_prior_times_likelihood_ao1 = function(
+	success_counts=private$success_counts, features=private$features, 
+	steepness=private$steepness, slopes=private$slopes) {
 		prev_cnr = self$calc_prevalence(features=features, 
 		slopes=slopes)
 		prevalences = setNames(list(1-prev_cnr, prev_cnr), c('0', '1'))
@@ -236,16 +236,17 @@ private=list(
 		return(product)
 	},
 	# compute prior times likelihood (again)
-	calc_prior_times_likelihood = function(success_counts, 
-	features=private$features, steepness=private$steepness, 
-	slopes=private$slopes) {
+	calc_prior_times_likelihood = function(
+	success_counts=private$success_counts, features=private$features, 
+	steepness=private$steepness, slopes=private$slopes) {
 		return(self$calc_prior_times_likelihood_ao1(success_counts, 
 		features=features, steepness=steepness, slopes=slopes))
 	},
 	# compute AO1 PMF
-	dao1 = function(success_counts, features=private$features, 
-	steepness=private$steepness, slopes=private$slopes) {
-		product = self$calc_prior_times_likelihood(
+	dao1 = function(success_counts=private$success_counts, 
+	features=private$features, steepness=private$steepness, 
+	slopes=private$slopes) {
+		product = self$calc_prior_times_likelihood_ao1(
 		success_counts=success_counts, features=features, 
 		steepness=steepness, slopes=slopes)
 		prob_mix = rowSums(product)
@@ -270,7 +271,7 @@ private=list(
 	calc_postr_ao1 = function(success_counts=private$success_counts, 
 	features=private$features, steepness=private$steepness, 
 	slopes=private$slopes) {
-		product = self$calc_prior_times_likelihood(
+		product = self$calc_prior_times_likelihood_ao1(
 		success_counts=success_counts, features=features, 
 		steepness=steepness, slopes=slopes)
 		class_postr = t(sapply(1:nrow(product), function(i) {
@@ -328,7 +329,7 @@ private=list(
 			postr_cnr = self$calc_postr_ao1(
 			success_counts=masspoints, features=intercept, 
 			steepness=steepness, 
-			slopes=linear_comb)[, '1'] # use AO1 method
+			slopes=u)[, '1'] # use AO1 method
 			# emergency exit if all predict same class
 			round_postr_cnr = round(postr_cnr)
 			if(round_postr_cnr[1]==
@@ -336,9 +337,9 @@ private=list(
 				return(NA)
 			}
 			# interpolate
-			idx_lower = findInterval(0.5, postr_cnr, 
-			rightmost.closed=TRUE)
-			idx = idx_lower:(idx_lower+1)
+			idx_lower = max(which(postr_cnr<=0.5))
+			idx_upper = min(which(postr_cnr>=0.5))
+			idx = c(idx_lower, idx_upper)
 			approx(x=postr_cnr[idx], y=masspoints[idx], 
 			xout=0.5)$y
 		})
@@ -356,9 +357,8 @@ private=list(
 		lin_comb = as.vector(as.matrix(features)%*%slopes)
 		# for each linear combination value, get the boundary count
 		boundary_count = sapply(lin_comb, self$calc_boundary)
-		# get the predicted class label
-		predicted_class_labels = ifelse(success_counts>boundary_count, 
-		1, 0)
+		# get the predicted class label		
+		predicted_class_labels = round(self$calc_postr()[, '1'])
 		# make sorted dataframe
 		df = data.frame(lincomb=lin_comb, boundarycount=boundary_count, 
 		rawcount=success_counts, predlabel=predicted_class_labels)
@@ -590,16 +590,24 @@ public=list(
 		common = list(features=features, slopes=slopes)
 		return(common)
 	},
-	# compute AO0 PMF
-	dao0 = function(success_counts, steepness=private$steepness, 
-	prevalence=plogis(private$slopes)) {
+	# compute prior times likelihood
+	calc_prior_times_likelihood = function(success_counts, 
+	steepness=private$steepness, prevalence=plogis(private$slopes)) {
 		# cast as AO1
 		common = self$cast_as_ao1(success_counts=success_counts, 
 		prevalence=prevalence)
 		# use AO1 method
 		product = self$calc_prior_times_likelihood_ao1(
-		success_counts=success_counts, features=common$features,
+		success_counts=success_counts, features=common$features, 
 		steepness=steepness, slopes=common$slopes)
+		return(product)
+	},
+	# compute AO0 PMF
+	dao0 = function(success_counts, steepness=private$steepness, 
+	prevalence=plogis(private$slopes)) {
+		product = self$calc_prior_times_likelihood(
+		success_counts=success_counts, steepness=steepness, 
+		prevalence=prevalence)
 		prob_mix = rowSums(product)
 		return(prob_mix)
 	},
@@ -613,12 +621,14 @@ public=list(
 	# compute posterior probability
 	calc_postr = function(success_counts=private$success_counts, 
 	steepness=private$steepness, prevalence=plogis(private$slopes)) {
-		# cast as AO1
-		common = self$cast_as_ao1(success_counts=success_counts, 
+		product = self$calc_prior_times_likelihood(
+		success_counts=success_counts, steepness=steepness, 
 		prevalence=prevalence)
-		# use AO1 method
-		class_postr = self$calc_postr_ao1(success_counts=success_counts, 
-		features=common$features, steepness=steepness, slopes=common$slopes)
+		class_postr = t(sapply(1:nrow(product), function(i) {
+			nume = product[i, ]
+			deno = sum(nume)
+			nume/deno
+		}))
 		return(class_postr)
 	},
 	# calculate bayes classifier metrics
