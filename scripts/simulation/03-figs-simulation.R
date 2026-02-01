@@ -4,6 +4,13 @@ library('lattice')
 # load analysis results
 load('./simulation.RData')
 
+# create figs directory if not exists
+(function(path) {
+	if(!dir.exists(path)) {
+		dir.create(path)
+	}
+})('./figs')
+
 # demonstrate xsep in 2D
 set.seed(840)
 pdf('./figs/figs-simulation-xsep.pdf')

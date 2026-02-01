@@ -5,6 +5,13 @@ with(ao, {
 	source('./utils/classification.R', local=TRUE)
 }); Sys.time()
 
+# create figs directory if not exists
+(function(path) {
+	if(!dir.exists(path)) {
+		dir.create(path)
+	}
+})('./figs')
+
 # plot carpaldens
 pdf('./figs/figs-models-carpal.pdf')
 with(new.env(), {

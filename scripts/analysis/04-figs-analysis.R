@@ -1,6 +1,13 @@
 # load analysis results
 load('./analysis.RData')
 
+# create figs directory if not exists
+(function(path) {
+	if(!dir.exists(path)) {
+		dir.create(path)
+	}
+})('./figs')
+
 # function: plot the unsupervised result, for a pointscale
 visualize_ps_unsuperv = function(true_class_labels, model_ao0, model_ao1, 
 nomsens, main=NA) {
