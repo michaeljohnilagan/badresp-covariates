@@ -1,3 +1,6 @@
+# import packages
+library('R6')
+
 # generate from carpal distribution
 rcarpal = function(n, shift) {
 	z = rnorm(n)
