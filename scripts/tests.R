@@ -1,8 +1,6 @@
 # import my stuff
-Sys.time()
 source('./utils/aomodels.R')
 source('./utils/classification.R')
-Sys.time()
 
 # test: rcarpal vs dcarpal
 set.seed(457)

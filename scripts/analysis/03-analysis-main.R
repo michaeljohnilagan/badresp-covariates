@@ -3,11 +3,11 @@ library('detranli')
 library('randomForest')
 
 # import my stuff
-Sys.time(); ao = new.env()
+ao = new.env()
 with(ao, {
 	source('./utils/aomodels.R', local=TRUE)
 	source('./utils/classification.R', local=TRUE)
-}); Sys.time()
+})
 
 # load preprocessed data
 all_ps = readRDS('./data/analysis-preprocess.RDS')
