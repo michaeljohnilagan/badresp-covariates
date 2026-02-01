@@ -223,13 +223,15 @@ run_repl = function(n, contam, xsep, zwhich, verbose=FALSE) {
 }
 
 # demonstrate single replicate
-set.seed(91)
-foo = run_repl(n=200, contam=0.75, xsep='small', zwhich='even', 
-verbose=TRUE)
-print(with(foo, {
-	do.call(rbind, list(sc=met_sc, ao0=met_ao0, ao1=met_ao1))
-}), digits=3)
-rm(foo)
+if(FALSE) {
+	set.seed(91)
+	foo = run_repl(n=200, contam=0.75, xsep='small', zwhich='even', 
+	verbose=TRUE)
+	print(with(foo, {
+		do.call(rbind, list(sc=met_sc, ao0=met_ao0, ao1=met_ao1))
+	}), digits=3)
+	rm(foo)
+})
 
 # function: run simulation cell
 run_cell = function(numrepl, n, contam, xsep, zwhich) {
@@ -252,11 +254,13 @@ run_cell = function(numrepl, n, contam, xsep, zwhich) {
 }
 
 # demonstrate one cell
-set.seed(99)
-Sys.time(); foo = run_cell(numrepl=3, n=200, contam=0.75, xsep='small', 
-zwhich='even'); Sys.time()
-print(foo, digits=3)
-rm(foo)
+if(FALSE) {
+	set.seed(99)
+	Sys.time(); foo = run_cell(numrepl=3, n=200, contam=0.75, 
+	xsep='small', zwhich='even'); Sys.time()
+	print(foo, digits=3)
+	rm(foo)
+})
 
 # simulation study factors
 sim_factors = list(n=c(100, 300, 900), contam=c(5, 25, 50, 75, 95)/100,
@@ -266,7 +270,7 @@ print(sim_factors)
 
 # simulation number of replicates
 numrepl = 3
-print(numrepl)
+message('this run has ', numrepl, ' replicates per cell')
 
 # simulation results
 sim_results = array(list(), dim=sapply(sim_factors, length))
