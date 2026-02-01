@@ -231,7 +231,7 @@ if(FALSE) {
 		do.call(rbind, list(sc=met_sc, ao0=met_ao0, ao1=met_ao1))
 	}), digits=3)
 	rm(foo)
-})
+}
 
 # function: run simulation cell
 run_cell = function(numrepl, n, contam, xsep, zwhich) {
@@ -260,7 +260,7 @@ if(FALSE) {
 	xsep='small', zwhich='even'); Sys.time()
 	print(foo, digits=3)
 	rm(foo)
-})
+}
 
 # simulation study factors
 sim_factors = list(n=c(100, 300, 900), contam=c(5, 25, 50, 75, 95)/100,
