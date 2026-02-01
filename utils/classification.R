@@ -10,8 +10,7 @@ pval2count = function(pval, size, tolerance=1e-5) {
 }
 
 # get classification metrics
-metrics = function(true_class_labels, predicted_class_labels, 
-short_names=FALSE) {
+metrics = function(true_class_labels, predicted_class_labels) {
 	# compute accuracy, etc
 	acc = mean(true_class_labels==predicted_class_labels)
 	sens = mean(predicted_class_labels[true_class_labels==1]==1)
