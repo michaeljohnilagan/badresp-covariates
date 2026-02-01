@@ -47,7 +47,7 @@ classifier2col = setNames(c('red3', 'green3', 'blue3'), c('sc', 'ao0', 'ao1'))
 key_acc = list(columns=3, lines=list(lty=rep(1:2, times=3), 
 col=rep(classifier2col[c('sc', 'ao0', 'ao1')], each=2)), 
 text=list(label=c('all items, SC', 'even items only, SC', 'all items, AO0', 
-'even items only, AO0', 'all items, AO1', 'even AO1')))
+'even items only, AO0', 'all items, AO1', 'even AO1')), cex=0.90)
 lattice::xyplot(met_sc.acc~factor(xsep, levels=sim_factors$xsep) | 
 factor(n)*factor(contam), data=sim_tab_panelplots, panel=function(x,y,...) {
 	# get panel data
