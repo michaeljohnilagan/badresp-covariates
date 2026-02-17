@@ -16,7 +16,7 @@ samplers = list()
 
 # settings: L1P1
 settings$l1p1 = with(new.env(), {
-	feat_funs = c('mahal', 'ptcor') # nonresponsivity indices
+	feat_funs = c('mahal', 'ptcossim') # nonresponsivity indices
 	feat_idvals = c(0, +1) # ideal point
 	numperms = 200 # number of synthetic rows per observed
 	nomsens = 0.95 # nominal sensitivity
@@ -269,7 +269,7 @@ zwhich=c('even', 'all'))
 print(sim_factors)
 
 # simulation number of replicates
-numrepl = 3
+numrepl = 500
 message('this run has ', numrepl, ' replicates per cell')
 
 # simulation results
