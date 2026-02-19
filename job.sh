@@ -1,3 +1,10 @@
+#!/bin/bash
+
+#SBATCH --time=40:00:00
+#SBATCH --mem_per-cpu=500M
+#SBATCH --cpus-per-task=1
+#SBATCH --job-name='milagan_badresp-covariates'
+
 # set up reproducible environment
 if [ ! -d './renv/library' ]; then
 R -e 'renv::restore()'
