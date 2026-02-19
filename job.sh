@@ -4,8 +4,12 @@ R -e 'renv::restore()'
 fi
 
 # not simulation, not analysis
+if [ ! -f './tests.Rout' ]; then 
 R --no-save --no-restore --file=tests/tests.R > tests.Rout 2>&1
+fi
+if [ ! -f './figs-other.Rout' ]; then 
 R --no-save --no-restore --file=scripts/figs-other.R > figs-other.Rout 2>&1
+fi
 
 # get data for simulation
 if [ ! -f './data/openpsychometrics-hsq.csv' ]; then
