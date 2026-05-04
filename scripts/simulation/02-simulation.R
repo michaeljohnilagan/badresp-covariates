@@ -69,106 +69,55 @@ samplers$likert = with(new.env(), {
 
 # settings: covariates
 settings$covariates = with(new.env(), {
-	usefulcorr = 0 # correlation between useful covariates
-	numcols_useful = 2 # how many useful covariates
-	numcols_useless = 8 # how many useless covariates
-	xsep_auc = setNames(c(0.5, 0.6, 0.7, 0.8), 
-	c('none', 'small', 'medium', 'large')) # target AUCs
-	list(usefulcorr=usefulcorr, numcols_useful=numcols_useful, 
-	numcols_useless=numcols_useless, xsep_auc=xsep_auc)
+	var_noise = 1 # noise variance in each feature
+	numcols_total = 3 # how many covariates, good + bad
+	list(var_noise=var_noise, numcols_total=numcols_total)
 })
 
 # samplers: covariates
 Sys.time(); samplers$covariates = with(new.env(), {
-	# use the settings
-	usefulcorr = settings$covariates$usefulcorr
-	numcols_useful = settings$covariates$numcols_useful
-	numcols_useless = settings$covariates$numcols_useless
-	numcols = numcols_useful+numcols_useless
-	targets = settings$covariates$xsep_auc
-	# class 0 mean and common variance
-	mu0 = rep(0, times=numcols)
-	usefulness = ifelse((1:numcols)<=numcols_useful, TRUE, FALSE)
-	sig = matrix(NA, numcols, numcols)
-	for(i in 1:numcols) for(j in 1:numcols) {
-		if(i==j) {
-			sig[i, j] = 1
-		} else if(usefulness[i]==usefulness[j]) {
-			sig[i, j] = usefulcorr
-		} else {
-			sig[i, j] = 0
-		}
-	}
-	# AUC as a function of the shift
-	shift2auc = function(shift) {
-		# implied class 1 mean
-		mu1 = c(rep(shift, times=numcols_useful), rep(shift, 
-		times=numcols_useless))
-		# implied noncentrality parameter
-		ncp = as.vector(t(mu1)%*%solve(sig)%*%mu1)
-		# integration for AUC
-		spec2sens = function(spec) {
-			qtile = qchisq(spec, df=numcols, ncp=0)
-			1-pchisq(qtile, df=numcols, ncp=ncp)
-		}
-		integrate(spec2sens, lower=0, upper=0.999)$value
-	}
-	# shift as a function of the AUC
-	auc2shift = function(auc) {
-		optim(0.5, function(s) {
-			(shift2auc(s)-auc)^2
-		}, method='L-BFGS-B', lower=0, upper=2)$par
-	}
-	# for each target AUC, get the shift
-	shifts = setNames(c(0, sapply(targets[-1], auc2shift)), 
-	names(targets))
-	# class 1 mean by target
-	mu1 = lapply(shifts, function(s) {
-		c(rep(s, times=numcols_useful), rep(0, 
-		times=numcols_useless))
-	})
-	# print the implied parameters
-	print(list(mu0=mu0, mu1=mu1, sig=sig))
-	# generators
-	sampler_noncnr = function() {
-		MASS::mvrnorm(1, mu=mu0, Sig=sig)
-	}
-	sampler_cnr = function(xsep) {
-		MASS::mvrnorm(1, mu=mu1[[xsep]], Sig=sig)
+	sampler = function(labels, numcols_useful) {
+		stopifnot(numcols_useful<=settings$covariates$numcols_total)
+		numcols_useless = settings$covariates$numcols_total-
+		numcols_useful
+		loadings = c(rep(1, times=numcols_useful), 
+		rep(0, times=numcols_useless))
+		systematic = outer(labels, loadings)
+		noise_num_cells = length(labels)*
+		settings$covariates$numcols_total
+		noise = rnorm(noise_num_cells, 0, 
+		sqrt(settings$covariates$var_noise))
+		systematic+noise
 	}
 	# output
-	list(noncnr=sampler_noncnr, cnr=sampler_cnr)
-}); Sys.time()
+	list(sampler=sampler)
+})
 
 # function: run simulation replicate, sampler
-run_repl_sampler = function(n, contam, xsep, zwhich) {
+run_repl_sampler = function(n, contam, xnumuf, zwhich) {
 	# true class label
-	y = ifelse((1:n)<(n*contam), 1, 0)
+	y = ifelse((1:n)<=(n*contam), 1, 0)
 	# generate likert
 	included = settings$likert$inclusion[[zwhich]]
-	z = t(sapply(y, function(yy) {
-		if(yy==1) {
+	z = t(sapply(1:n, function(i) {
+		if(y[i]==1) {
 			samplers$likert[['cnr']]()
-		} else if(yy==0) {
+		} else if(y[i]==0) {
 			samplers$likert[['noncnr']]()
+		} else {
+			stop('invalid class label')
 		}
 	}))[, included]
 	# generate covariates
-	x = t(sapply(y, function(yy) {
-		if(yy==1) {
-			samplers$covariates[['cnr']](xsep)
-		} else if(yy==0) {
-			samplers$covariates[['noncnr']]()
-		}
-	}))
+	x = samplers$covariates$sampler(labels=y, numcols_useful=xnumuf)
 	# put together
 	return(list(y=y, z=z, x=x))
 }
 
 # function: run simulation replicate
-run_repl = function(n, contam, xsep, zwhich, verbose=FALSE) {
+run_repl = function(n, contam, xnumuf, zwhich, verbose=FALSE) {
 	# generate data
-	dat = run_repl_sampler(n=n, contam=contam, xsep=xsep, 
+	dat = run_repl_sampler(n=n, contam=contam, xnumuf=xnumuf, 
 	zwhich=zwhich)
 	included = settings$likert$inclusion[[zwhich]]
 	# use settings for L1P1
@@ -223,9 +172,9 @@ run_repl = function(n, contam, xsep, zwhich, verbose=FALSE) {
 }
 
 # demonstrate single replicate
-if(FALSE) {
+if(TRUE) {
 	set.seed(91)
-	foo = run_repl(n=200, contam=0.75, xsep='small', zwhich='even', 
+	foo = run_repl(n=200, contam=0.75, xnumuf=1, zwhich='even', 
 	verbose=TRUE)
 	print(with(foo, {
 		do.call(rbind, list(sc=met_sc, ao0=met_ao0, ao1=met_ao1))
@@ -234,18 +183,17 @@ if(FALSE) {
 }
 
 # function: run simulation cell
-run_cell = function(numrepl, n, contam, xsep, zwhich) {
+run_cell = function(numrepl, n, contam, xnumuf, zwhich) {
 	# scenario information
-	scenario = data.frame(n=n, contam=contam, xsep=xsep, 
+	scenario = data.frame(n=n, contam=contam, xnumuf=xnumuf, 
 	zwhich=zwhich)
 	# do many replicates
 	start_seed = 1000
 	result_cell = lapply(start_seed+1:numrepl, function(seed) {
 		set.seed(seed)
-		result_repl = run_repl(n=n, contam=contam, 
-		xsep=xsep, zwhich=zwhich)
-		c(unlist(result_repl[c('met_sc', 'met_ao0', 'met_ao1', 
-		'll_improved', 'optim_exception')]))
+		result_repl = do.call(run_repl, scenario)
+		unlist(result_repl[c('met_sc', 'met_ao0', 'met_ao1', 
+		'll_improved', 'optim_exception')])
 	})
 	# put together
 	simplified = as.data.frame(do.call(rbind, result_cell))
@@ -257,26 +205,25 @@ run_cell = function(numrepl, n, contam, xsep, zwhich) {
 if(FALSE) {
 	set.seed(99)
 	Sys.time(); foo = run_cell(numrepl=3, n=200, contam=0.75, 
-	xsep='small', zwhich='even'); Sys.time()
+	xnumuf=1, zwhich='even'); Sys.time()
 	print(foo, digits=3)
 	rm(foo)
 }
 
 # simulation study factors
 sim_factors = list(n=c(100, 300, 900), contam=c(5, 25, 50, 75, 95)/100,
-xsep=c('none', 'small', 'medium', 'large'), 
-zwhich=c('even', 'all'))
+xnumuf=0:3, zwhich=c('even', 'all'))
 print(sim_factors)
 
 # simulation number of replicates
-numrepl = 500
+numrepl = 3
 message('this run has ', numrepl, ' replicates per cell')
 
 # simulation results
 sim_results = array(list(), dim=sapply(sim_factors, length))
 for(i1 in 1:length(sim_factors$n))
 for(i2 in 1:length(sim_factors$contam))
-for(i3 in 1:length(sim_factors$xsep))
+for(i3 in 1:length(sim_factors$xnumuf))
 for(i4 in 1:length(sim_factors$zwhich)) {
 	with(sim_factors, {
 		scenario_id = mapply('[[', sim_factors, c(i1, i2, i3, i4))
@@ -285,7 +232,7 @@ for(i4 in 1:length(sim_factors$zwhich)) {
 	}) # report cell
 	sim_results[[i1, i2, i3, i4]] = with(sim_factors, {
 		run_cell(numrepl=numrepl, n=n[i1], contam=contam[i2], 
-		xsep=xsep[i3], zwhich=zwhich[i4])
+		xnumuf=xnumuf[i3], zwhich=zwhich[i4])
 	}) # save cell result
 }; Sys.time()
 rm(i1, i2, i3, i4)
@@ -310,3 +257,4 @@ sim_tab = do.call(rbind, lapply(sim_results, summarize_cell))
 Sys.time()
 save.image("./simulation.RData")
 devtools::session_info()
+
