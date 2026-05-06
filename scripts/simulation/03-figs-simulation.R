@@ -59,7 +59,7 @@ factor(n)*factor(contam), data=sim_tab_panelplots, panel=function(x,y,...) {
 	y_even_ao1 = coords_even$met_ao1.acc # AO1
 	lattice::panel.lines(x_even, y_even_ao1, lty=2, col=classifier2col['ao1'], 
 	type='b', pch=19, alpha=0.5)
-}, ylim=c(0.6, 1), xlab='separation in covariates', ylab='accuracy', 
+}, ylim=c(0.55, 1), xlab='separation in covariates', ylab='accuracy', 
 key=key_acc)
 dev.off()
 
