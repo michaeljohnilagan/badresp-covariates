@@ -40,25 +40,25 @@ factor(n)*factor(contam), data=sim_tab_panelplots, panel=function(x,y,...) {
 	x_all = factor(coords_all$xnumuf, levels=sim_factors$xnumuf)
 	y_all_sc = coords_all$met_sc.acc # SC
 	lattice::panel.lines(x_all, y_all_sc, lty=1, col=classifier2col['sc'], 
-	type='b', pch=19)
+	type='b', pch=19, alpha=0.5)
 	y_all_ao0 = coords_all$met_ao0.acc # AO0
 	lattice::panel.lines(x_all, y_all_ao0, lty=1, col=classifier2col['ao0'], 
-	type='b', pch=19)
+	type='b', pch=19, alpha=0.5)
 	y_all_ao1 = coords_all$met_ao1.acc # AO1
 	lattice::panel.lines(x_all, y_all_ao1, lty=1, col=classifier2col['ao1'], 
-	type='b', pch=19)
+	type='b', pch=19, alpha=0.5)
 	# plot for zwhich=='even'
 	coords_even = curr_ncontam[curr_ncontam$zwhich=='even', ]
 	x_even = factor(coords_even$xnumuf, levels=sim_factors$xnumuf)
 	y_even_sc = coords_even$met_sc.acc # SC 
 	lattice::panel.lines(x_even, y_even_sc, lty=2, col=classifier2col['sc'], 
-	type='b', pch=19)
+	type='b', pch=19, alpha=0.5)
 	y_even_ao0 = coords_even$met_ao0.acc # AO0
 	lattice::panel.lines(x_even, y_even_ao0, lty=2, col=classifier2col['ao0'], 
-	type='b', pch=19)
+	type='b', pch=19, alpha=0.5)
 	y_even_ao1 = coords_even$met_ao1.acc # AO1
 	lattice::panel.lines(x_even, y_even_ao1, lty=2, col=classifier2col['ao1'], 
-	type='b', pch=19)
+	type='b', pch=19, alpha=0.5)
 }, ylim=c(0.6, 1), xlab='separation in covariates', ylab='accuracy', 
 key=key_acc)
 dev.off()
@@ -75,12 +75,12 @@ factor(n)*factor(contam), data=sim_tab_panelplots, panel=function(x,y,...) {
 	coords_all = curr_ncontam[curr_ncontam$zwhich=='all', ]
 	x_all = factor(coords_all$xnumuf, levels=sim_factors$xnumuf)
 	y_all = coords_all$ll_improved
-	lattice::panel.lines(x_all, y_all, lty=1, col=1, type='b', pch=19)
+	lattice::panel.lines(x_all, y_all, lty=1, col=1, type='b', pch=19, alpha=0.5)
 	# plot for zwhich=='even'
 	coords_even = curr_ncontam[curr_ncontam$zwhich=='even', ]
 	x_even = factor(coords_even$xnumuf, levels=sim_factors$xnumuf)
 	y_even = coords_even$ll_improved 
-	lattice::panel.lines(x_even, y_even, lty=2, col=1, type='b', pch=19)
+	lattice::panel.lines(x_even, y_even, lty=2, col=1, type='b', pch=19, alpha=0.5)
 }, xlab='separation in covariates', ylab='rate of log likelihood improved',
 key=key_ll)
 dev.off()
